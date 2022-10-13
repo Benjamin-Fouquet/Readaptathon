@@ -46,6 +46,7 @@ def getPosesRaw(T):
 def getPoses(keypoints):
     """
     Extraction et formatage des poses à partir des fichiers OpenPose
+    Format des donnees : (N,C,4)   =>   N, label de point, (timestamp, x, y, confidence)
     """
     points=[]
     files=os.listdir(keypoints)
