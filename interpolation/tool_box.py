@@ -1,6 +1,7 @@
 import json
 import numpy as np
-
+import os
+from scipy.interpolate import griddata
 
 def getT(test_name):
     with open(test_name) as j:
@@ -8,7 +9,10 @@ def getT(test_name):
     return T
 
 
-def getPoses(T):
+def getPosesOld(T):
+    """
+    Extraction et formatage des poses à partir des json pretraites par les eleves
+    """
 
     P = np.array(T["poses"])
     P = np.array([[xy[:2] for xy in frame] for frame in P])
@@ -28,10 +32,43 @@ def getPoses(T):
 
     return P
 
-
 def getPosesRaw(T):
 
     P = np.array(T["poses"])
     P = np.array([[xy[:2] for xy in frame] for frame in P])
 
     return P
+
+
+
+#<--- Code de Nathan ci-dessous --->
+
+def getPoses(keypoints):
+    """
+    Extraction et formatage des poses à partir des fichiers OpenPose
+    """
+    points=[]
+    files=os.listdir(keypoints)
+    files.sort()
+    for f in files:
+        timestp=int(f.split('_')[1])
+        with open(os.path.join(keypoints,f),'r') as f:
+            data=json.load(f)
+            point=np.array(data['people'][0]['pose_keypoints_2d']).reshape(-1,3)
+            point=np.concatenate((np.tile(np.array([timestp]),(point.shape[0],1)),point),axis=1)
+            points.append(point)
+    points=np.stack(points).astype('int')
+    return points
+
+
+def interpolate_points_to_video(points):
+    """Interpolate points to number of video frames
+    """
+    last_frame=points[-1,0,0]
+    coordinates=points[...,0:1]
+    values=points[...,1:]
+    interp_points=[]
+    for lab in range(points.shape[1]):
+        interp_points.append(np.concatenate((np.arange(0,last_frame)[...,None],griddata(coordinates[:,lab],values[:,lab],(np.arange(0,last_frame)),method='linear',fill_value=0)),-1))
+    interp_points=np.stack(interp_points,1)
+    return interp_points
