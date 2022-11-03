@@ -53,6 +53,11 @@ def get_last_timestp(folder, verbose=True):
 
 class HackathonDataset(Dataset):
     def __init__(self, datapath: str , keypoints) -> None:
+        """
+        Args:
+            datapath (str): path to the data
+            keypoints (list): list of keypoints to keep
+        """
         super().__init__()
         self.datapath: str = datapath
         self.keypoints = keypoints
@@ -70,15 +75,17 @@ class HackathonDataset(Dataset):
                 empty_folders.append(l_timestp)
 
         max_timestp = np.max(np.array(last_timestp))
-        starter_tensor = np.zeros((1, max_timestp, len(keypoints), 3), dtype=np.float32)
+        starter_tensor = np.empty((1, max_timestp, len(keypoints), 3), dtype=np.float32)
         subjects = []
 
-        for folder in os.listdir(datapath):
+        for folder in list(os.listdir(datapath)):
             if f"{datapath}/{folder}" not in empty_folders:
                 subjects.append(folder)
                 frame_points = getPoses(f"{datapath}/{folder}")
-                interp_frame_points = interpolate_points_to_video(frame_points, max_timestp)
-                tensor2 = np.expand_dims(interp_frame_points[:, keypoints, 1:], 0)
+                interp_frame_points = interpolate_points_to_video(frame_points, None)
+                #Pad with zeros to match max_timestp
+                tensor2 = np.zeros((1, max_timestp, len(keypoints), 3), dtype=np.float32)
+                tensor2[0,:interp_frame_points.shape[0], :, :] = interp_frame_points[:,self.keypoints,1:]
                 starter_tensor = np.concatenate((starter_tensor, tensor2), axis=0)
 
         subjects_tensor = starter_tensor[1:, ...]
@@ -96,7 +103,7 @@ class HackathonDataset(Dataset):
 
     def __getitem__(self, index) -> None:
         # 1 subject, 1 score
-        return self.tensor[index, ...], self.scores[index] if self.scores else None
+        return self.tensor[index], self.scores[index] if self.scores else None
 
 
 class HackathonDataModule(pl.LightningDataModule):
@@ -113,6 +120,7 @@ class HackathonDataModule(pl.LightningDataModule):
         return super().prepare_data()
 
     def setup(self, split: float = 0.2) -> None:
+        self.prepare_data()
         self.dataset.tensor = (self.dataset.tensor - torch.min(self.dataset.tensor)) / (
             torch.max(self.dataset.tensor) - torch.min(self.dataset.tensor)
         )
