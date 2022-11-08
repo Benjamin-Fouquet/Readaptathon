@@ -138,12 +138,12 @@ class HackathonDataModule(pl.LightningDataModule):
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
-            self.train_ds, self.batch_size, shuffle=True, num_workers=os.cpu_count()
+            self.train_ds, self.batch_size, shuffle=True, num_workers=int(os.cpu_count()/2)
         )
 
     def val_dataloader(self) -> DataLoader:
         return DataLoader(
-            self.val_ds, self.batch_size, shuffle=False, num_workers=os.cpu_count()
+            self.val_ds, self.batch_size, shuffle=False, num_workers=int(os.cpu_count()/2)
         )
 
     def test_dataloader(self) -> DataLoader:
