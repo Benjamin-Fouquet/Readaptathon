@@ -5,8 +5,15 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from datamodules import HackathonDataModule
 import torch
 import psutil
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+import holoviews as hv
+import panel as pn
+import pandas as pd
+import numpy as np
+import datashader as ds
+from holoviews.operation.datashader import datashade
+import datashader as ds
+import datashader.transfer_functions as tf
+
 
 if __name__ == "__main__":
     dm=HackathonDataModule('test/datapath_test',list(range(1,8)),batch_size=1)
@@ -38,30 +45,106 @@ if __name__ == "__main__":
     #Recover points from data. from (batch_size,num_points*space_dim,N) to (batch_size,num_points,space_dim,N)
     data=data.reshape(data.shape[0],data.shape[1]//3,3,data.shape[2])[:,:,:2,:]
     print(f'Points shape : {data.shape}')
-    #Plot points as an animation over the dimension 3 of the skeleton
+    #Plot points over the dimension 3 of the skeleton
     body_25b_edges=((0,1),(1,2),(2,3),(0,4),(4,5),(5,6))
     point_names=['Cou','EpauleD','CoudeD','PoignetD','EpauleG','CoudeG','PoignetG']
-    fig, ax = plt.subplots()
-    ax.set_xlim(-1,0)
-    ax.set_ylim(-1,0)
-    ax.set_aspect('equal')
-    ax.set_title('Skeleton')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.grid()
-    lines = [ax.plot([], [], 'o-', lw=2, label=point_names[i])[0] for i in range(data.shape[1])]
-    ax.legend()
-    def init():
-        for line in lines:
-            line.set_data([], [])
-        return lines
-    def update(i):
-        for j,line in enumerate(lines):
-            line.set_data(-data[0,j,0,i], -data[0,j,1,i])
-        return lines
+    #Convert points as a dataframe
+    df=pd.DataFrame(-data[0].moveaxis(-1,0).reshape(-1,2),columns=['x','y'])
+    print(df)
+    df['point']=point_names*data.shape[-1]
+    df['point_id']=np.arange(data.shape[-1]).repeat(7)
+    df['frame']=np.array(range(data.shape[-1]))[:,None].repeat(len(point_names),axis=1).reshape(-1)
+    print(df)
+
+
+    hv.extension('bokeh')
+    slider=pn.widgets.IntSlider(name='Frame',start=0,end=data.shape[-1]-1,value=0)
+    # @pn.depends(slider.param.value)
+    # def plot_points(frame):
+    #     points = hv.Nodes(df[df['frame']==frame][['x','y','point']], ['x', 'y','point'])
+    #     points.opts(color='point')
+    #     #Add segments using body_25b_edges
+    #     df_frame=df[df['frame']==frame]
+    #     segment_df=pd.DataFrame(columns=['x0','y0','x1','y1','index'])
+    #     for i,edge in enumerate(body_25b_edges):
+    #         #segment_df=segment_df.append({'x0':df_frame.iloc[edge[0]]['x'],'y0':df_frame.iloc[edge[0]]['y'],'x1':df_frame.iloc[edge[1]]['x'],'y1':df_frame.iloc[edge[1]]['y']},ignore_index=True)
+    #         #Same as above but withou using append
+    #         segment_df.loc[len(segment_df)]=[df_frame.iloc[edge[0]]['x'],df_frame.iloc[edge[0]]['y'],df_frame.iloc[edge[1]]['x'],df_frame.iloc[edge[1]]['y'],i]
+
+
+    #     segments=hv.Segments(segment_df,['x0','y0','x1','y1'],'index')
+    #     #Add a different color for each segment
+    #     segments.opts(color='index',cmap='Category10',line_width=2)
+    #     graph= segments.opts(width=400,height=400,xlim=(-1.2,0.2),ylim=(-1.2,0.2))
+    #     return graph
+
+    #Same as above but with datashader
+    def nodesplot(nodes, name=None, canvas=None, cat=None,cvsopts={}):
+        canvas = ds.Canvas(**cvsopts) if canvas is None else canvas
+        aggregator=None if cat is None else ds.count_cat(cat)
+        agg=canvas.points(nodes,'x','y',aggregator)
+        return tf.spread(tf.shade(agg, cmap=["#FF3333"]), px=3, name=name)
+
+    def edgesplot(edges, name=None, canvas=None,cvsopts={}):
+        canvas = ds.Canvas(**cvsopts) if canvas is None else canvas
+        return tf.shade(canvas.line(edges, 'x','y', agg=ds.count()), name=name)
     
-    anim = FuncAnimation(fig, update, init_func=init, frames=data.shape[3], interval=100, blit=True)
-    plt.show()
+    def graphplot(nodes, edges, name="", canvas=None, cat=None,cvsopts={}):
+        if canvas is None:
+            xr = nodes.x.min(), nodes.x.max()
+            yr = nodes.y.min(), nodes.y.max()
+            canvas = ds.Canvas(x_range=xr, y_range=yr, **cvsopts)
+            
+        np = nodesplot(nodes, name + " nodes", canvas, cat)
+        ep = edgesplot(edges, name + " edges", canvas)
+        return tf.stack(ep, np, how="over", name=name)
+
+    @pn.depends(slider.param.value)
+    def plot_points(frame):
+        df_frame=df[df['frame']==frame]
+        nodes=df_frame[['x','y','point_id']]
+        nodes['name']=df_frame['point_id'].astype(str)
+        #Convert body_25b_edges to a dataframe with x and y columns as source and target
+        edges=pd.DataFrame(body_25b_edges,columns=['x','y'])
+        
+        cvs=ds.Canvas(plot_width=400,plot_height=400,x_range=(-1.2,0.2),y_range=(-1.2,0.2))
+        graph=graphplot(nodes,edges,canvas=cvs)
+        return graph
+        
+        
+    accelerations=[]
+    for point in range(data.shape[1]):
+        acceleration2d=np.linalg.norm(data[0,point,:,1:]-data[0,point,:,0:-1],axis=0)
+        accelerations.append(acceleration2d)
+        #Create line plot, with the acceleration as y and the frame as x
+    def update_slider(x, y):
+        slider.value=int(x)
+        print(x)
+        #return empty RGBPlot
+    shaders=[]
+    for i,acceleration2d in enumerate(accelerations):
+        opts= hv.opts.RGB(width=900,height=150,xlim=(0,data.shape[-1]-1),xlabel='Frame',ylabel='Acceleration',title=point_names[i])
+        #set color blue
+        ndoverlay=hv.NdOverlay({point_names[i]:hv.Curve((range(data.shape[-1]),acceleration2d))},kdims='Point')
+        shaded=datashade(ndoverlay,cnorm='linear', aggregator=ds.count()).opts(opts)
+        stream= hv.streams.Tap(source=shaded,x=0, y=np.nan)
+        stream.add_subscriber(update_slider)
+        shaders.append(shaded)
+    
+
+    @pn.depends(slider.param.value)
+    def plot_acceleration(frame):
+        lines=[]
+        for i,shaded in enumerate(shaders):
+            shaded=hv.VLine(frame).opts(color='red',line_width=2)*shaded
+            lines.append(shaded)
+        return hv.Layout(lines).cols(1)
+
+    
+    row=pn.Column(slider,plot_points)
+    app=pn.Row(row,plot_acceleration).servable()
+    app.show()
+
 
 
 
