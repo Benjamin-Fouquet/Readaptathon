@@ -17,7 +17,7 @@ from datashader.bundling import connect_edges, hammer_bundle
 
 
 if __name__ == "__main__":
-    dm=HackathonDataModule('test/datapath_test',list(range(1,8)),batch_size=1)
+    dm=HackathonDataModule('test/datapath_test','test/scores.json',list(range(1,8)),batch_size=1)
     print("Memory Usage:")
     print('Total:    ', round(psutil.virtual_memory().total/1024**3,1), 'GB')
     print('Available before loading :', round(psutil.virtual_memory().available/1024**3,1), 'GB')
@@ -42,6 +42,7 @@ if __name__ == "__main__":
         count+=1
 
     print(f'Number of batches : {count}')
+    data=dm.pretrain_ds[0][0]
     
     #Recover points from data. from (batch_size,num_points*space_dim,N) to (batch_size,num_points,space_dim,N)
     data=data.reshape(data.shape[0],data.shape[1]//3,3,data.shape[2])[:,:,:2,:]
@@ -61,25 +62,6 @@ if __name__ == "__main__":
 
     hv.extension('bokeh')
     slider=pn.widgets.IntSlider(name='Frame',start=0,end=data.shape[-1]-1,value=0)
-    # @pn.depends(slider.param.value)
-    # def plot_points(frame):
-    #     points = hv.Nodes(df[df['frame']==frame][['x','y','point']], ['x', 'y','point'])
-    #     points.opts(color='point')
-    #     #Add segments using body_25b_edges
-    #     df_frame=df[df['frame']==frame]
-    #     segment_df=pd.DataFrame(columns=['x0','y0','x1','y1','index'])
-    #     for i,edge in enumerate(body_25b_edges):
-    #         #segment_df=segment_df.append({'x0':df_frame.iloc[edge[0]]['x'],'y0':df_frame.iloc[edge[0]]['y'],'x1':df_frame.iloc[edge[1]]['x'],'y1':df_frame.iloc[edge[1]]['y']},ignore_index=True)
-    #         #Same as above but withou using append
-    #         segment_df.loc[len(segment_df)]=[df_frame.iloc[edge[0]]['x'],df_frame.iloc[edge[0]]['y'],df_frame.iloc[edge[1]]['x'],df_frame.iloc[edge[1]]['y'],i]
-
-
-    #     segments=hv.Segments(segment_df,['x0','y0','x1','y1'],'index')
-    #     #Add a different color for each segment
-    #     segments.opts(color='index',cmap='Category10',line_width=2)
-    #     graph= segments.opts(width=400,height=400,xlim=(-1.2,0.2),ylim=(-1.2,0.2))
-    #     return graph
-
     #Same as above but with datashader
     def nodesplot(nodes, name=None, canvas=None, cat=None,cvsopts={}):
         canvas = ds.Canvas(**cvsopts) if canvas is None else canvas
