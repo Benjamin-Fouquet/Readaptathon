@@ -76,7 +76,8 @@ def get_last_timestp(folder, verbose=True):
 
 
 def normalize_tensor(full_tensor):
-    """Normalize a tensor. The mean of every patients are set to . The standard deviation is set to 1 over all patients.
+    """Normalize a tensor. The mean of every patients are set to 0.
+       The standard deviation is set to 1 over all patients.
 
     Args:
         full_tensor: a tensor of shape (nb_patients, 3 * keypoints, nb_frames)
