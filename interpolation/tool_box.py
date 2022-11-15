@@ -103,6 +103,32 @@ def getPoses(folder: str):
     points = np.stack(points).astype("int")
     return points
 
+# --- fin des modifications de Sarah ---
+
+def getPosesBM(folder: str,keypoints=['Neck', 'RShoulder', 'RElbow', 'RWrist', 'LShoulder', 'LElbow', 'LWrist']):
+    """
+    Extraction et formatage des poses des fichiers OpenPose du dataset BimanualActions
+    Format des donnees : (N,C,4)   =>   N, label de point, (timestamp, x, y, confidence)
+    """
+    points = []
+    files = os.listdir(folder)
+    files.sort()
+    for f in files:
+        timestp = int(f.split("_")[1].replace('.json',''))
+        with open(os.path.join(folder, f), "r") as f:
+            data = json.load(f)[0]
+            point=[]
+            for k in keypoints:
+                x,y,c=[data[k][i] for i in ['x','y','confidence']]
+                point.append(np.stack([x,y,c]))
+            point=np.concatenate(point)
+            points.append(point)
+    points = np.stack(points,-1).astype("int")
+    return points
+
+
+
+
 
 # Ici j'ai ajouté un paramètre last_frame pour pouvoir interpoler à un nombre de frame donné 
 # (pour pouvoir mettre toutes les vidéos au même nombre de frames)

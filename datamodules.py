@@ -14,6 +14,9 @@ TODO: @Sarah
 
 import json
 import os
+import threading
+import time
+from functools import wraps
 
 from typing import Dict, List, Optional, Tuple, Union
 #from isort import file
@@ -25,14 +28,27 @@ from torch.utils.data import DataLoader, Dataset
 
 from scipy.interpolate import griddata
 
-from interpolation.tool_box import getPoses, interpolate_points_to_video
+from interpolation.tool_box import getPoses, interpolate_points_to_video, getPosesBM
+from torch.utils.data import ConcatDataset
 
+
+def async_loader(func):
+    """Run a function in parallel"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        thread = threading.Thread(target=func, args=args, kwargs=kwargs)
+        thread.start()
+        return thread
+
+    return wrapper
 # number of original keypoints in json files
 n_keypoints = 25
 # keypoints to keep
 keypoints = [1, 2, 3, 4, 5, 6, 7]
 # datapath    = "/home/benjamin/Documents/hackathon/AHA/derivatives-one-skeleton/"
 datapath = "/home/reynaudsarah/Documents/Data/hackathon/AHA/derivatives-one-skeleton"
+score_path = "/home/reynaudsarah/Documents/Data/hackathon/AHA/aha_scores.json"
+
 file_path = f"{datapath}/020101_aha_j0.json"
 
 
@@ -52,9 +68,10 @@ def get_last_timestp(folder, verbose=True):
 
 
 class HackathonDataset(Dataset):
-    def __init__(self, datapath: str , keypoints) -> None:
+    def __init__(self, datapath: str , score_path:str, keypoints) -> None:
         super().__init__()
         self.datapath: str = datapath
+        self.score_path: str = score_path
         self.keypoints = keypoints
         self.scores = 0
 
@@ -70,16 +87,22 @@ class HackathonDataset(Dataset):
                 empty_folders.append(l_timestp)
 
         max_timestp = np.max(np.array(last_timestp))
+        self.max_timestp = max_timestp
         starter_tensor = np.zeros((1, max_timestp, len(keypoints), 3), dtype=np.float32)
         subjects = []
 
         for folder in os.listdir(datapath):
             if f"{datapath}/{folder}" not in empty_folders:
                 subjects.append(folder)
+
                 frame_points = getPoses(f"{datapath}/{folder}")
-                interp_frame_points = interpolate_points_to_video(frame_points, max_timestp)
-                tensor2 = np.expand_dims(interp_frame_points[:, keypoints, 1:], 0)
-                starter_tensor = np.concatenate((starter_tensor, tensor2), axis=0)
+                interp_frame_points = interpolate_points_to_video(frame_points)
+
+                padded_interp_frame_points = np.zeros((1, max_timestp, len(keypoints), 3), dtype=np.float32)
+                padded_interp_frame_points[0,:interp_frame_points.shape[0], ...] = interp_frame_points[:,keypoints,1:]
+                 
+                starter_tensor = np.concatenate((starter_tensor, padded_interp_frame_points), axis=0) #tensor2
+
 
         subjects_tensor = starter_tensor[1:, ...]
         subjects_tensor = (
@@ -91,38 +114,142 @@ class HackathonDataset(Dataset):
         self.tensor = torch.FloatTensor( subjects_tensor )
         self.subjects = subjects
 
+        # loading scores
+        self.scores = torch.zeros( (len(subjects), 1), dtype = torch.float32 ) 
+        with open(self.score_path, 'r') as f:
+            score_dict = json.load(f)
+        
+        i = 0
+        for s in subjects: 
+            self.scores[i] = float( score_dict[s] )
+            i += 1
+        self.scores = self.scores.squeeze(0)
+
+    
+
     def __len__(self):
         return len(self.subjects)
 
     def __getitem__(self, index) -> None:
         # 1 subject, 1 score
-        return self.tensor[index, ...], self.scores[index] if self.scores else None
+        return self.tensor[index, ...], self.scores[index] #if self.scores else None
 
+class BimanualActionsDataset(Dataset):
+    def __init__(self, take_folder: str, gt_file, max_frame:int) -> None:
+        super().__init__()
+        self.take_folder: str = take_folder
+        self.gt_file = gt_file
+        self.max_frame = max_frame
+        self.scores = 0
+        self.keypoints=['Neck', 'RShoulder', 'RElbow', 'RWrist', 'LShoulder', 'LElbow', 'LWrist']
+        self.points=getPosesBM(folder=self.take_folder, keypoints=self.keypoints)
+        with open(self.gt_file, 'r') as f:
+            self.gt_dict = json.load(f)
+        
+        
+        right_hand_gt=self.gt_dict['right_hand']
+        left_hand_gt=self.gt_dict['left_hand']
+        right_hand_tasks=right_hand_gt[1::2]
+        left_hand_tasks=left_hand_gt[1::2]
+        right_hand_tmstps=right_hand_gt[::2]
+        left_hand_tmstps=left_hand_gt[::2]
+        actions_points=[]
+        frame_to_remove={'right_hand':[], 'left_hand':[]}
+        for i in range(len(right_hand_tasks)):
+            if right_hand_tasks[i]==None:
+                frame_to_remove['right_hand'].append(right_hand_tmstps[i])
+            else:
+                padded_action_point = np.empty((self.points.shape[0],max_frame))
+                action_point=self.points[:,right_hand_tmstps[i]:right_hand_tmstps[i+1]]
+                padded_action_point[:,:action_point.shape[1]] = action_point
+            actions_points.append(padded_action_point)
+        for i in range(len(left_hand_tasks)):
+            if left_hand_tasks[i]==None:
+                frame_to_remove['left_hand'].append(left_hand_tmstps[i])
+            else:
+                padded_action_point = np.empty((self.points.shape[0],max_frame))
+                action_point=self.points[:,left_hand_tmstps[i]:left_hand_tmstps[i+1]]
+                padded_action_point[:,:action_point.shape[1]] = action_point
+                actions_points.append(padded_action_point)
+        self.actions_points=torch.FloatTensor(np.stack(actions_points))
+        #Remove frames with no action
+        
+        right_hand_tasks=[x for x in right_hand_tasks if x != None]
+        left_hand_tasks=[x for x in left_hand_tasks if x != None]
+
+        self.actions_gt=torch.FloatTensor(np.concatenate((right_hand_tasks,left_hand_tasks)))
+    def __len__(self):
+        return len(self.actions_points)
+    
+    def __getitem__(self, index):
+        return self.actions_points[index:index+1], self.actions_gt[index]
+
+
+        # print(self.points.shape)
+threads=[]
+
+def get_bmdataset(take_folder, gt_file, max_frame):
+    threads.append(0)
+    ds= BimanualActionsDataset(take_folder, gt_file, max_frame)
+    threads.pop()
+    return ds
+
+def get_bimanual_actions_dataset(max_frame,root_dir="F:\\bimacs_derived_data_body_pose\\"):
+    """Return a dataset of bimanual actions"""
+    data_dir=os.path.join(root_dir, "bimacs_derived_data")
+    gt_dir=os.path.join(root_dir, "bimacs_rgbd_data_ground_truth")
+    takes=[]
+    flag=False
+    for sub_folder in os.listdir(data_dir):
+        for task_folder in os.listdir(os.path.join(data_dir, sub_folder)):
+            for take_folder in os.listdir(os.path.join(data_dir, sub_folder, task_folder)):
+                gt_file=os.path.join(gt_dir, sub_folder, task_folder, take_folder+'.json')
+                if not flag:
+                    takes.append(get_bmdataset(os.path.join(data_dir, sub_folder, task_folder, take_folder,'body_pose'), gt_file, max_frame))
+                    flag=True
+
+    return ConcatDataset(takes)
+       
 
 class HackathonDataModule(pl.LightningDataModule):
     def __init__(
-        self, datapath: str=None, keypoints = list( np.arange(1,8, dtype=int) ), batch_size: int = 1
+        self, datapath: str=None, score_path:str=None, keypoints = list( np.arange(1,8, dtype=int) ), batch_size: int = 1, shuffle_dataset: bool=True
     ):
         super().__init__()
         self.datapath = datapath
+        self.score_path = score_path
         self.keypoints = keypoints
         self.batch_size = batch_size
+        self.shuffle_dataset = shuffle_dataset
 
     def prepare_data(self) -> None:
-        self.dataset = HackathonDataset(self.datapath, self.keypoints)
+        self.dataset = HackathonDataset(self.datapath, self.score_path, self.keypoints)
         return super().prepare_data()
 
     def setup(self, split: float = 0.2) -> None:
         self.dataset.tensor = (self.dataset.tensor - torch.min(self.dataset.tensor)) / (
             torch.max(self.dataset.tensor) - torch.min(self.dataset.tensor)
         )
-        self.val_ds, self.train_ds = torch.split(
-            self.dataset.tensor,
-            [
-                int(split * len(self.dataset.tensor)),
-                len(self.dataset.tensor) - int(split * len(self.dataset.tensor)),
-            ],
-        )
+
+        #create indices to split dataset
+        indices = list(range(len(self.dataset)))
+        if self.shuffle_dataset :
+            np.random.shuffle(indices)
+        train_indices, val_indices = indices[int(split * len(self.dataset)):], indices[:int(split * len(self.dataset))]
+        if len(indices) == 1:
+            self.train_ds,self.val_ds=self.dataset,self.dataset
+        else:
+            self.train_ds, self.val_ds = self.dataset[train_indices], self.dataset[val_indices]
+        
+        self.pretrain_ds=get_bimanual_actions_dataset(max_frame=self.dataset.max_timestp)
+        
+
+        ''' 
+        # avec des sampler? -> si oui ajouter argument dans dataloaders
+        self.train_sampler = torch.utils.data.sampler.SubsetRandomSampler(train_indices)
+        self.val_sampler = torch.utils.data.sampler.SubsetRandomSampler(val_indices)
+        '''
+
         self.test_ds = None
         # reflechir sur norm, best approach prob. {xi}, {yi} min/max. Pas touche les C TODO
 
@@ -140,11 +267,6 @@ class HackathonDataModule(pl.LightningDataModule):
 
     def test_dataloader(self) -> DataLoader:
         return None
-
-
-
-
-
 
 
 '''
@@ -320,7 +442,7 @@ datamodule.setup()
 ###############################
 
 if __name__ == "__main__": 
-    datamodule = HackathonDataModule(datapath, keypoints, 1)
+    datamodule = HackathonDataModule(datapath, score_path, keypoints, 1)
     datamodule.prepare_data()
     datamodule.setup()
 
@@ -328,6 +450,5 @@ if __name__ == "__main__":
     val_loader = datamodule.val_dataloader()
 
 ## TODO: vizu
-
 
 
