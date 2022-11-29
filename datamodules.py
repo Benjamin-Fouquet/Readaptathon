@@ -211,7 +211,7 @@ class HackathonDataset(Dataset):
         '''
         mask = (self.scores > -1) * 1.0
         self.scores = self.scores * mask
-        self.subjects = self.subjects[self.scores.nonzero()]
+        self.tensor = self.subjects[self.scores.nonzero()]
         self.scores = self.subjects[self.scores.nonzero()]
 
 class BimanualActionsDataset(Dataset):
