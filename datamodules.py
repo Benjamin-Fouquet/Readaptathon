@@ -196,7 +196,7 @@ class HackathonDataset(Dataset):
         self.scores = self.scores.squeeze(0)
 
     def __len__(self):
-        return len(self.subjects)
+        return len(self.tensor)
 
     def __getitem__(self, index) -> None:
         # 1 subject, 1 score
@@ -211,8 +211,8 @@ class HackathonDataset(Dataset):
         '''
         mask = (self.scores > -1) * 1.0
         self.scores = self.scores * mask
-        self.tensor = self.tensor[self.scores.nonzero()]
-        self.scores = self.scores[self.scores.nonzero()]
+        self.tensor = self.tensor[self.scores.nonzero()[:,0]]
+        self.scores = self.scores[self.scores.nonzero()[:,0]]
 
 class BimanualActionsDataset(Dataset):
     def __init__(self, take_folder: str, gt_file, max_frame: int) -> None:
