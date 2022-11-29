@@ -1,5 +1,4 @@
 testscript.py
 *.pyc
-test/test_datamodule_BM.py
 lightning_logs
 data 
