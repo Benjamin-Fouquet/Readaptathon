@@ -164,6 +164,7 @@ class HackathonDataset(Dataset):
         ).swapaxes(1, 2)
 
         self.tensor = torch.FloatTensor(subjects_tensor)
+
         self.subjects = subjects
 
         # loading scores
@@ -314,6 +315,7 @@ class HackathonDataModule(pl.LightningDataModule):
         keypoints=list(np.arange(1, 8, dtype=int)),
         batch_size: int = 1,
         shuffle_dataset: bool = True,
+        normalize=False,
     ):
         super().__init__()
         self.datapath = datapath
@@ -321,11 +323,14 @@ class HackathonDataModule(pl.LightningDataModule):
         self.keypoints = keypoints
         self.batch_size = batch_size
         self.shuffle_dataset = shuffle_dataset
+        self.normalize = normalize
 
     def prepare_data(self) -> None:
         self.dataset = HackathonDataset(
             self.datapath, self.score_path, self.keypoints
         )
+        if self.normalize:
+            normalize_tensor(self.dataset.tensor)
         return super().prepare_data()
 
     def setup(self, split: float = 0.2) -> None:
@@ -349,9 +354,9 @@ class HackathonDataModule(pl.LightningDataModule):
                 self.dataset[val_indices],
             )
 
-        self.pretrain_ds = get_bimanual_actions_dataset(
-            max_frame=self.dataset.max_timestp
-        )
+        # self.pretrain_ds = get_bimanual_actions_dataset(
+        #     max_frame=self.dataset.max_timestp
+        # )
 
         """ 
         # avec des sampler? -> si oui ajouter argument dans dataloaders
@@ -362,7 +367,8 @@ class HackathonDataModule(pl.LightningDataModule):
         self.test_ds = None
         # reflechir sur norm, best approach prob. {xi}, {yi} min/max. Pas touche les C TODO
 
-        return super().setup()
+        return None
+        # return super().setup()
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
