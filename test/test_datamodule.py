@@ -30,9 +30,21 @@ point_names = [
 point_ids = [0, 1, 2, 3, 4, 5, 6]
 
 
-def get_df(data_path, score_path, keypoints, batch_size=1, normalize=False):
+def get_df(
+    data_path,
+    score_path,
+    keypoints,
+    batch_size=1,
+    normalize=False,
+    smooth=False,
+):
     dm = HackathonDataModule(
-        data_path, score_path, keypoints, batch_size, normalize=normalize
+        data_path,
+        score_path,
+        keypoints,
+        batch_size,
+        normalize=normalize,
+        smooth=smooth,
     )
 
     print("Memory Usage:")
@@ -93,13 +105,49 @@ def get_df(data_path, score_path, keypoints, batch_size=1, normalize=False):
     return df, data
 
 
+def return_shaded(dat):
+    shaders = []
+    ndoverlay = hv.NdOverlay()
+    opts = hv.opts.RGB(
+        width=1000,
+        height=300,
+        xlim=(0, dat.shape[-1] - 1),
+        xlabel="Frame",
+        ylabel="Acceleration",
+        title="",
+    )
+    # set color blue
+
+    # ndoverlay=hv.NdOverlay({point_names[i]:hv.Curve((range(data.shape[-1]),acceleration2d))},kdims='Point')
+    # Create an ndoverlay with all the curves
+    def curve_acceleration(point):
+        return hv.Curve(
+            (range(dat.shape[-1]), accelerations[point]),
+            label=point_names[point],
+        )
+
+    curve_dict = {
+        point_names[i]: curve_acceleration(i) for i in range(dat.shape[1])
+    }
+
+    ndoverlay = hv.NdOverlay(curve_dict, kdims="Point")
+    # Add datashade, with different colors for each point and legend outside
+    shaded = datashade(
+        ndoverlay,
+        aggregator=ds.count_cat("Point"),
+        cmap="Category10",
+        legend_position="right",
+    ).opts(opts)
+    return shaded
+
+
 if __name__ == "__main__":
     df, data = get_df(
         "test/datapath_test",
         "test/scores.json",
         list(range(1, 8)),
         batch_size=1,
-        normalize=False,
+        normalize=True,
     )
     df_normalize, data_normalize = get_df(
         "test/datapath_test",
@@ -107,6 +155,7 @@ if __name__ == "__main__":
         list(range(1, 8)),
         batch_size=1,
         normalize=True,
+        smooth=True,
     )
 
     hv.extension("bokeh")
@@ -185,38 +234,9 @@ if __name__ == "__main__":
         print(x)
         # return empty RGBPlot
 
-    shaders = []
-    ndoverlay = hv.NdOverlay()
-    opts = hv.opts.RGB(
-        width=1000,
-        height=300,
-        xlim=(0, data.shape[-1] - 1),
-        xlabel="Frame",
-        ylabel="Acceleration",
-        title="",
-    )
-    # set color blue
+    shaded = return_shaded(data)
+    shaded_normalize = return_shaded(data_normalize)
 
-    # ndoverlay=hv.NdOverlay({point_names[i]:hv.Curve((range(data.shape[-1]),acceleration2d))},kdims='Point')
-    # Create an ndoverlay with all the curves
-    def curve_acceleration(point):
-        return hv.Curve(
-            (range(data.shape[-1]), accelerations[point]),
-            label=point_names[point],
-        )
-
-    curve_dict = {
-        point_names[i]: curve_acceleration(i) for i in range(data.shape[1])
-    }
-
-    ndoverlay = hv.NdOverlay(curve_dict, kdims="Point")
-    # Add datashade, with different colors for each point and legend outside
-    shaded = datashade(
-        ndoverlay,
-        aggregator=ds.count_cat("Point"),
-        cmap="Category10",
-        legend_position="right",
-    ).opts(opts)
     stream = hv.streams.Tap(source=shaded, x=0, y=np.nan)
     stream.add_subscriber(update_slider)
     # shaders.append(shaded)
@@ -229,6 +249,14 @@ if __name__ == "__main__":
         #     lines.append(shaded)
 
         return shaded * hv.VLine(frame).opts(color="red", line_width=2)
+
+    @pn.depends(slider.param.value)
+    def plot_acceleration_normalize(frame):
+        lines = []
+
+        return shaded_normalize * hv.VLine(frame).opts(
+            color="red", line_width=2
+        )
 
     # Add a legend that shows point_names with corresponding color (Category10)
     legend = pd.DataFrame({"Point": point_names})
@@ -255,6 +283,6 @@ if __name__ == "__main__":
     row = pn.Column(
         slider, plot_points, plot_points_normalize
     )  # , plot_points(df_normalize))
-    app = pn.Column(row, plot_acceleration)
+    app = pn.Column(row, plot_acceleration, plot_acceleration_normalize)
     app = pn.Row(app, legend_widget).servable()
     app.show()

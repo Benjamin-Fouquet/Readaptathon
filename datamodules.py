@@ -36,6 +36,7 @@ from interpolation.tool_box import (
     getPosesBM,
 )
 from torch.utils.data import ConcatDataset
+from interpolation.interpolation import interpolate, remove_anomalies
 
 
 def async_loader(func):
@@ -73,6 +74,22 @@ def get_last_timestp(folder, verbose=True):
         if verbose:
             print(f"{folder} is empty")
     return folder
+
+
+def interp_clean(y, window_length=31, poly_order=3, threshold=150):
+    y_interp = interpolate(
+        y, window_length=window_length, poly_order=poly_order
+    )
+    y_clean = remove_anomalies(y, y_interp, threshold)
+
+    return y_interp, y_clean
+
+
+def smooth_tensor(full_tensor):
+    for i, patient in enumerate(full_tensor):
+        for j, keypoint in enumerate(patient):
+            k_interp, k_clean = interp_clean(keypoint)
+            full_tensor[i, j, :] = torch.tensor(k_interp)
 
 
 def normalize_tensor(full_tensor):
@@ -316,6 +333,7 @@ class HackathonDataModule(pl.LightningDataModule):
         batch_size: int = 1,
         shuffle_dataset: bool = True,
         normalize=False,
+        smooth=False,
     ):
         super().__init__()
         self.datapath = datapath
@@ -324,6 +342,7 @@ class HackathonDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.shuffle_dataset = shuffle_dataset
         self.normalize = normalize
+        self.smooth = smooth
 
     def prepare_data(self) -> None:
         self.dataset = HackathonDataset(
@@ -331,6 +350,8 @@ class HackathonDataModule(pl.LightningDataModule):
         )
         if self.normalize:
             normalize_tensor(self.dataset.tensor)
+        if self.smooth:
+            smooth_tensor(self.dataset.tensor)
         return super().prepare_data()
 
     def setup(self, split: float = 0.2) -> None:
