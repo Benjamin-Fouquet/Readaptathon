@@ -36,6 +36,7 @@ from interpolation.tool_box import (
     getPosesBM,
 )
 from torch.utils.data import ConcatDataset
+from interpolation.interpolation import interpolate, remove_anomalies
 
 
 def async_loader(func):
@@ -75,7 +76,22 @@ def get_last_timestp(folder, verbose=True):
     return folder
 
 
+def interp_clean(y, window_length=31, poly_order=3, threshold=150):
+    y_interp = interpolate(
         y, window_length=window_length, poly_order=poly_order
+    )
+    y_clean = remove_anomalies(y, y_interp, threshold)
+
+    return y_interp, y_clean
+
+
+def smooth_tensor(full_tensor):
+    for i, patient in enumerate(full_tensor):
+        for j, keypoint in enumerate(patient):
+            k_interp, k_clean = interp_clean(keypoint)
+            full_tensor[i, j, :] = torch.tensor(k_interp)
+
+
 def normalize_tensor(full_tensor):
     """Normalize a tensor. The mean of every patients are set to 0.
        The standard deviation is set to 1 over all patients.
@@ -245,13 +261,12 @@ class BimanualActionsDataset(Dataset):
                 padded_action_point[:, : action_point.shape[1]] = action_point
                 actions_points.append(padded_action_point)
         self.actions_points = torch.FloatTensor(np.stack(actions_points))
-        
+        # Remove frames with no action
 
-        #Replace None with -1
-        right_hand_tasks = [-1 if x == None else x for x in right_hand_tasks]
-        left_hand_tasks = [-1 if x == None else x for x in left_hand_tasks]
+        right_hand_tasks = [x for x in right_hand_tasks if x != None]
+        left_hand_tasks = [x for x in left_hand_tasks if x != None]
 
-        self.actions_gt = torch.LongTensor(
+        self.actions_gt = torch.FloatTensor(
             np.concatenate((right_hand_tasks, left_hand_tasks))
         )
 
@@ -259,7 +274,7 @@ class BimanualActionsDataset(Dataset):
         return len(self.actions_points)
 
     def __getitem__(self, index):
-        return self.actions_points[index], self.actions_gt[index]
+        return self.actions_points[index : index + 1], self.actions_gt[index]
 
         # print(self.points.shape)
 
@@ -275,7 +290,7 @@ def get_bmdataset(take_folder, gt_file, max_frame):
 
 
 def get_bimanual_actions_dataset(
-    max_frame, root_dir="/home/nathan/bmds/"
+    max_frame, root_dir="F:\\bimacs_derived_data_body_pose\\"
 ):
     """Return a dataset of bimanual actions"""
     data_dir = os.path.join(root_dir, "bimacs_derived_data")
@@ -290,8 +305,7 @@ def get_bimanual_actions_dataset(
                 gt_file = os.path.join(
                     gt_dir, sub_folder, task_folder, take_folder + ".json"
                 )
-                if True:#not flag:
-                    print(sub_folder, task_folder, take_folder)
+                if not flag:
                     takes.append(
                         get_bmdataset(
                             os.path.join(
@@ -319,6 +333,7 @@ class HackathonDataModule(pl.LightningDataModule):
         batch_size: int = 1,
         shuffle_dataset: bool = True,
         normalize=False,
+        smooth=False,
     ):
         super().__init__()
         self.datapath = datapath
@@ -327,6 +342,7 @@ class HackathonDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.shuffle_dataset = shuffle_dataset
         self.normalize = normalize
+        self.smooth = smooth
 
     def prepare_data(self) -> None:
         self.dataset = HackathonDataset(
@@ -334,13 +350,14 @@ class HackathonDataModule(pl.LightningDataModule):
         )
         if self.normalize:
             normalize_tensor(self.dataset.tensor)
+        if self.smooth:
+            smooth_tensor(self.dataset.tensor)
         return super().prepare_data()
 
     def setup(self, split: float = 0.2) -> None:
         self.dataset.tensor = (
             self.dataset.tensor - torch.min(self.dataset.tensor)
         ) / (torch.max(self.dataset.tensor) - torch.min(self.dataset.tensor))
-
         # create indices to split dataset
         indices = list(range(len(self.dataset)))
         if self.shuffle_dataset:
@@ -350,28 +367,20 @@ class HackathonDataModule(pl.LightningDataModule):
             indices[: int(split * len(self.dataset))],
         )
         if len(indices) == 1:
+            print("len indices = 1")
             self.train_ds, self.val_ds = self.dataset, self.dataset
         else:
-            self.train_ds, self.val_ds = (
-                self.dataset[train_indices],
-                self.dataset[val_indices],
-            )
-
+            self.train_ds = [self.dataset[k] for k in train_indices]
+            self.val_ds = [self.dataset[k] for k in val_indices]
+        """
         self.pretrain_ds = get_bimanual_actions_dataset(
-            max_frame=10000
-        )
-
-        """ 
+            max_frame=self.dataset.max_timestp
+        )"""
+        """
         # avec des sampler? -> si oui ajouter argument dans dataloaders
         self.train_sampler = torch.utils.data.sampler.SubsetRandomSampler(train_indices)
         self.val_sampler = torch.utils.data.sampler.SubsetRandomSampler(val_indices)
         """
-
-        self.test_ds = None
-        # reflechir sur norm, best approach prob. {xi}, {yi} min/max. Pas touche les C TODO
-
-        return None
-        # return super().setup()
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
