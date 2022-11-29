@@ -2,5 +2,6 @@ testscript.py
 *.pyc
 test/test_datamodule_BM.py
 *.ckpt
+data
 lightning_logs/*
 *_pycache_*

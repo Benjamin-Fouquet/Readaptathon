@@ -75,6 +75,7 @@ def get_last_timestp(folder, verbose=True):
     return folder
 
 
+        y, window_length=window_length, poly_order=poly_order
 def normalize_tensor(full_tensor):
     """Normalize a tensor. The mean of every patients are set to 0.
        The standard deviation is set to 1 over all patients.
