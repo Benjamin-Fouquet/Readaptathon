@@ -205,6 +205,14 @@ class HackathonDataset(Dataset):
             self.scores[index],
         )  # if self.scores else None
 
+    def clean(self):
+        '''
+        Remove subjects without score for training
+        '''
+        mask = (self.scores > -1) * 1.0
+        self.scores = self.scores * mask
+        self.subjects = self.subjects[self.scores.nonzero()]
+        self.scores = self.subjects[self.scores.nonzero()]
 
 class BimanualActionsDataset(Dataset):
     def __init__(self, take_folder: str, gt_file, max_frame: int) -> None:
@@ -348,6 +356,7 @@ class HackathonDataModule(pl.LightningDataModule):
         self.dataset = HackathonDataset(
             self.datapath, self.score_path, self.keypoints
         )
+        self.dataset.clean()
         if self.normalize:
             normalize_tensor(self.dataset.tensor)
         if self.smooth:

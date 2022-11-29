@@ -1,7 +1,12 @@
 testscript.py
 *.pyc
+<<<<<<< HEAD
 test/test_datamodule_BM.py
 *.ckpt
 data
 lightning_logs/*
 *_pycache_*
+=======
+lightning_logs
+data 
+>>>>>>> ae68f6fc02cafc5659db9a6ebc0dd9c98ac7546b
