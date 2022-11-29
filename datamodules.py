@@ -247,9 +247,9 @@ class BimanualActionsDataset(Dataset):
         # Remove frames with no action
 
         right_hand_tasks = [x for x in right_hand_tasks if x != None]
-        left_hand_tasks = [x for x in left_hand_tasks if x != None]
+        left_hand_tasks = [x+14 for x in left_hand_tasks if x != None]
 
-        self.actions_gt = torch.FloatTensor(
+        self.actions_gt = torch.LongTensor(
             np.concatenate((right_hand_tasks, left_hand_tasks))
         )
 
@@ -257,7 +257,7 @@ class BimanualActionsDataset(Dataset):
         return len(self.actions_points)
 
     def __getitem__(self, index):
-        return self.actions_points[index : index + 1], self.actions_gt[index]
+        return self.actions_points[index], self.actions_gt[index]
 
         # print(self.points.shape)
 
@@ -273,7 +273,7 @@ def get_bmdataset(take_folder, gt_file, max_frame):
 
 
 def get_bimanual_actions_dataset(
-    max_frame, root_dir="F:\\bimacs_derived_data_body_pose\\"
+    max_frame, root_dir="/home/nathan/bmds/"
 ):
     """Return a dataset of bimanual actions"""
     data_dir = os.path.join(root_dir, "bimacs_derived_data")
@@ -289,6 +289,7 @@ def get_bimanual_actions_dataset(
                     gt_dir, sub_folder, task_folder, take_folder + ".json"
                 )
                 if not flag:
+                    print(sub_folder, task_folder, take_folder)
                     takes.append(
                         get_bmdataset(
                             os.path.join(
@@ -354,9 +355,9 @@ class HackathonDataModule(pl.LightningDataModule):
                 self.dataset[val_indices],
             )
 
-        # self.pretrain_ds = get_bimanual_actions_dataset(
-        #     max_frame=self.dataset.max_timestp
-        # )
+        self.pretrain_ds = get_bimanual_actions_dataset(
+            max_frame=10000
+        )
 
         """ 
         # avec des sampler? -> si oui ajouter argument dans dataloaders
