@@ -33,18 +33,18 @@ class HackaConv(pl.LightningModule):
         self.layers.append(nn.AvgPool1d(kernel_size=10))
         self.layers.append(nn.Flatten())
         self.layers.append(nn.LazyLinear(out_features=1))
-        self.layers.append(nn.Softmax())
+        self.layers.append(nn.Sigmoid()) 
 
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
-        return x
+        return x * 100 #from 0-1 to 0-100
 
     def training_step(self, batch, batch_idx):
         x, y = batch
         z = self(x)
 
-        loss = F.mse_loss(z, y) #Binary 
+        loss = F.mse_loss(z, y) if y != -1 else 0 #Binary 
         self.losses.append(loss.detach().cpu().numpy())
 
         self.log("train_loss", loss)
