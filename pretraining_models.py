@@ -97,7 +97,7 @@ class HackConvPretraining(pl.LightningModule):
         for i in range(y.shape[0]):
             if y[i]>13:
                 loss.append(F.cross_entropy(z_l[i:i+1], y[i:i+1]-14))
-            else:
+            elif y[i]<14 and y[i]>0:
                 loss.append(F.cross_entropy(z_r[i:i+1], y[i:i+1]))
         
         loss=torch.stack(loss).mean()

@@ -244,10 +244,11 @@ class BimanualActionsDataset(Dataset):
                 padded_action_point[:, : action_point.shape[1]] = action_point
                 actions_points.append(padded_action_point)
         self.actions_points = torch.FloatTensor(np.stack(actions_points))
-        # Remove frames with no action
+        
 
-        right_hand_tasks = [x for x in right_hand_tasks if x != None]
-        left_hand_tasks = [x+14 for x in left_hand_tasks if x != None]
+        #Replace None with -1
+        right_hand_tasks = [-1 if x == None else x for x in right_hand_tasks]
+        left_hand_tasks = [-1 if x == None else x for x in left_hand_tasks]
 
         self.actions_gt = torch.LongTensor(
             np.concatenate((right_hand_tasks, left_hand_tasks))
@@ -288,7 +289,7 @@ def get_bimanual_actions_dataset(
                 gt_file = os.path.join(
                     gt_dir, sub_folder, task_folder, take_folder + ".json"
                 )
-                if not flag:
+                if True:#not flag:
                     print(sub_folder, task_folder, take_folder)
                     takes.append(
                         get_bmdataset(
