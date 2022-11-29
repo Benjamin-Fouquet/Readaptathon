@@ -43,8 +43,7 @@ class HackaConv(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         z = self(x)
-
-        loss = F.mse_loss(z, y) if y != -1 else 0 #Binary 
+        loss = F.mse_loss(z, y)#Binary 
         self.losses.append(loss.detach().cpu().numpy())
 
         self.log("train_loss", loss)
