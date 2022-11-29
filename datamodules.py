@@ -358,7 +358,6 @@ class HackathonDataModule(pl.LightningDataModule):
         self.dataset.tensor = (
             self.dataset.tensor - torch.min(self.dataset.tensor)
         ) / (torch.max(self.dataset.tensor) - torch.min(self.dataset.tensor))
-
         # create indices to split dataset
         indices = list(range(len(self.dataset)))
         if self.shuffle_dataset:
@@ -368,28 +367,20 @@ class HackathonDataModule(pl.LightningDataModule):
             indices[: int(split * len(self.dataset))],
         )
         if len(indices) == 1:
+            print("len indices = 1")
             self.train_ds, self.val_ds = self.dataset, self.dataset
         else:
-            self.train_ds, self.val_ds = (
-                self.dataset[train_indices],
-                self.dataset[val_indices],
-            )
-
-        # self.pretrain_ds = get_bimanual_actions_dataset(
-        #     max_frame=self.dataset.max_timestp
-        # )
-
-        """ 
+            self.train_ds = [self.dataset[k] for k in train_indices]
+            self.val_ds = [self.dataset[k] for k in val_indices]
+        """
+        self.pretrain_ds = get_bimanual_actions_dataset(
+            max_frame=self.dataset.max_timestp
+        )"""
+        """
         # avec des sampler? -> si oui ajouter argument dans dataloaders
         self.train_sampler = torch.utils.data.sampler.SubsetRandomSampler(train_indices)
         self.val_sampler = torch.utils.data.sampler.SubsetRandomSampler(val_indices)
         """
-
-        self.test_ds = None
-        # reflechir sur norm, best approach prob. {xi}, {yi} min/max. Pas touche les C TODO
-
-        return None
-        # return super().setup()
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
