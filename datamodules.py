@@ -211,8 +211,8 @@ class HackathonDataset(Dataset):
         '''
         mask = (self.scores > -1) * 1.0
         self.scores = self.scores * mask
-        self.tensor = self.subjects[self.scores.nonzero()]
-        self.scores = self.subjects[self.scores.nonzero()]
+        self.tensor = self.tensor[self.scores.nonzero()]
+        self.scores = self.scores[self.scores.nonzero()]
 
 class BimanualActionsDataset(Dataset):
     def __init__(self, take_folder: str, gt_file, max_frame: int) -> None:
@@ -364,9 +364,6 @@ class HackathonDataModule(pl.LightningDataModule):
         return super().prepare_data()
 
     def setup(self, split: float = 0.2) -> None:
-        self.dataset.tensor = (
-            self.dataset.tensor - torch.min(self.dataset.tensor)
-        ) / (torch.max(self.dataset.tensor) - torch.min(self.dataset.tensor))
         # create indices to split dataset
         indices = list(range(len(self.dataset)))
         if self.shuffle_dataset:
