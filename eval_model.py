@@ -61,8 +61,8 @@ with torch.no_grad():
         error_inf_5 += (Diff < 5).sum().item()
         tot_patients += Diff.shape[0]
 
-    print("L2_norm = ", L2_norm)
-    print("L1_norm = ", L1_norm)
+    print("L2_norm = ", L2_norm / tot_patients)
+    print("L1_norm = ", L1_norm / tot_patients)
     print("% error <5", error_inf_5 / tot_patients)
     print("Max error", max_norm)
 # freeze
