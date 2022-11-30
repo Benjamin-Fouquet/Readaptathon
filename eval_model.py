@@ -9,7 +9,7 @@ epochs = 50
 gpus = [0] if torch.cuda.is_available() else []
 batch_size = 12
 
-datapath = "data/AHA/derivatives-one-skeleton"
+datapath = "data/media/rousseau/Seagate5To/Sync-Data/AHA/derivatives-one-skeleton"
 score_path = "data/aha_scores.json"
 ckpt = "lightning_logs/version_22/checkpoints/epoch=999-step=3000.ckpt"
 
@@ -34,17 +34,25 @@ model = HackaConv().load_from_checkpoint(
 
 with torch.no_grad():
     model.eval()
-    L2_norm = 0
-    L1_norm = 0
-    for batch in val_loader:
+    L2_norm, L1_norm, max_norm, error_inf_5= 0., 0., 0., 0.	
+    tot_patients = 0
+    print("WARNING: evaluation on the train dataset for the moment.")
+    for batch in train_loader:
         x, y = batch
         predict_score = model(x)
+        
+        Diff = torch.abs(predict_score - y)
+        
+        L1_norm += Diff.sum(dim=0).item()
         L2_norm += ((predict_score - y) ** 2).sum(dim=0).item()
-        L1_norm += (torch.abs(predict_score - y)).sum(dim=0).item()
+        max_norm = torch.max(Diff) if torch.max(Diff)>max_norm else max_norm
+        error_inf_5 += (Diff < 5).sum().item()
+        tot_patients += Diff.shape[0]
 
     print("L2_norm = ", L2_norm)
     print("L1_norm = ", L1_norm)
-
+    print("% error <5", error_inf_5 / tot_patients)
+    print("Max error", max_norm)
 # freeze
 # model.freeze()
 # for param in model.layers[-2].parameters():
