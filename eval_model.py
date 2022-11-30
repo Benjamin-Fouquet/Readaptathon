@@ -5,6 +5,7 @@ import datamodules
 import pytorch_lightning as pl
 import torch
 
+
 epochs = 50
 gpus = [0] if torch.cuda.is_available() else []
 batch_size = 12
@@ -36,8 +37,19 @@ with torch.no_grad():
     model.eval()
     L2_norm, L1_norm, max_norm, error_inf_5= 0., 0., 0., 0.	
     tot_patients = 0
-    print("WARNING: evaluation on the train dataset for the moment.")
+    print("WARNING: evaluation on the whole dataset for the moment.")
     for batch in train_loader:
+        x, y = batch
+        predict_score = model(x)
+        
+        Diff = torch.abs(predict_score - y)
+        
+        L1_norm += Diff.sum(dim=0).item()
+        L2_norm += ((predict_score - y) ** 2).sum(dim=0).item()
+        max_norm = torch.max(Diff) if torch.max(Diff)>max_norm else max_norm
+        error_inf_5 += (Diff < 5).sum().item()
+        tot_patients += Diff.shape[0]
+    for batch in val_loader:
         x, y = batch
         predict_score = model(x)
         
