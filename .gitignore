@@ -1,4 +1,3 @@
-testscript.py
 *.pyc
 <<<<<<< HEAD
 test/test_datamodule_BM.py
