@@ -1,7 +1,7 @@
 from models import (
     HackaConv,
 )  # TODO, to change to namespace specific import before git
-import datamodules
+import aaha_datamodules
 import pytorch_lightning as pl
 import torch
 
@@ -14,7 +14,7 @@ datapath = "data/media/rousseau/Seagate5To/Sync-Data/AHA/derivatives-one-skeleto
 score_path = "data/aha_scores.json"
 ckpt = "lightning_logs/version_22/checkpoints/epoch=999-step=3000.ckpt"
 
-dm = datamodules.HackathonDataModule(
+dm = aaha_datamodules.HackathonDataModule(
     datapath=datapath, score_path=score_path, batch_size=batch_size
 )
 dm.prepare_data()  # very slow, opti possible?

@@ -1,5 +1,5 @@
 from models import HackaConvNet, HackaConvLSTMNet, HackaConvPretraining #TODO, to change to namespace specific import before git
-import datamodules
+import aaha_datamodules
 import pytorch_lightning as pl
 import torch
 
@@ -12,7 +12,7 @@ score_path = "data/aha_scores.json"
 ckpt = None
 # ckpt = 'data/pretrained_conv1d.ckpt'
 
-dm = datamodules.HackathonDataModule(datapath=datapath, score_path=score_path, batch_size=batch_size)
+dm = aaha_datamodules.HackathonDataModule(datapath=datapath, score_path=score_path, batch_size=batch_size)
 dm.prepare_data() #very slow, opti possible?
 dm.setup()
 

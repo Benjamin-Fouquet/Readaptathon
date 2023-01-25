@@ -25,7 +25,6 @@ from scipy.interpolate import griddata
 from interpolation.tool_box import (
     getPoses,
     interpolate_points_to_video,
-    getPosesBM,
 )
 from torch.utils.data import ConcatDataset
 from interpolation.interpolation import interpolate, remove_anomalies
@@ -37,6 +36,7 @@ datapath = (
 )
 score_path = "/home/reynaudsarah/Documents/Data/hackathon/AHA/aha_scores.json"
 file_path = f"{datapath}/020101_aha_j0.json"
+
 
 
 def get_last_timestp(folder, verbose=True):
@@ -219,123 +219,6 @@ class HackathonDataset(Dataset):
         self.scores = self.scores * mask
         self.tensor = self.tensor[self.scores.nonzero()[:,0]]
         self.scores = self.scores[self.scores.nonzero()[:,0]]
-
-class BimanualActionsDataset(Dataset):
-    def __init__(self, take_folder: str, gt_file, max_frame: int) -> None:
-        super().__init__()
-        self.take_folder: str = take_folder
-        self.gt_file = gt_file
-        self.max_frame = max_frame
-        self.scores = 0
-        self.keypoints = [
-            "Neck",
-            "RShoulder",
-            "RElbow",
-            "RWrist",
-            "LShoulder",
-            "LElbow",
-            "LWrist",
-        ]
-        self.points = getPosesBM(
-            folder=self.take_folder, keypoints=self.keypoints
-        )
-        with open(self.gt_file, "r") as f:
-            self.gt_dict = json.load(f)
-
-        right_hand_gt = self.gt_dict["right_hand"]
-        left_hand_gt = self.gt_dict["left_hand"]
-        right_hand_tasks = right_hand_gt[1::2]
-        left_hand_tasks = left_hand_gt[1::2]
-        right_hand_tmstps = right_hand_gt[::2]
-        left_hand_tmstps = left_hand_gt[::2]
-        actions_points = []
-        frame_to_remove = {"right_hand": [], "left_hand": []}
-        for i in range(len(right_hand_tasks)):
-            if right_hand_tasks[i] == None:
-                frame_to_remove["right_hand"].append(right_hand_tmstps[i])
-            else:
-                padded_action_point = np.empty(
-                    (self.points.shape[0], max_frame)
-                )
-                action_point = self.points[
-                    :, right_hand_tmstps[i] : right_hand_tmstps[i + 1]
-                ]
-                padded_action_point[:, : action_point.shape[1]] = action_point
-            actions_points.append(padded_action_point)
-        for i in range(len(left_hand_tasks)):
-            if left_hand_tasks[i] == None:
-                frame_to_remove["left_hand"].append(left_hand_tmstps[i])
-            else:
-                padded_action_point = np.empty(
-                    (self.points.shape[0], max_frame)
-                )
-                action_point = self.points[
-                    :, left_hand_tmstps[i] : left_hand_tmstps[i + 1]
-                ]
-                padded_action_point[:, : action_point.shape[1]] = action_point
-                actions_points.append(padded_action_point)
-        self.actions_points = torch.FloatTensor(np.stack(actions_points))
-        # Remove frames with no action
-
-        right_hand_tasks = [x for x in right_hand_tasks if x != None]
-        left_hand_tasks = [x for x in left_hand_tasks if x != None]
-
-        self.actions_gt = torch.FloatTensor(
-            np.concatenate((right_hand_tasks, left_hand_tasks))
-        )
-
-    def __len__(self):
-        return len(self.actions_points)
-
-    def __getitem__(self, index):
-        return self.actions_points[index : index + 1], self.actions_gt[index]
-
-
-
-threads = []
-
-
-def get_bmdataset(take_folder, gt_file, max_frame):
-    threads.append(0)
-    ds = BimanualActionsDataset(take_folder, gt_file, max_frame)
-    threads.pop()
-    return ds
-
-
-def get_bimanual_actions_dataset(
-    max_frame, root_dir="F:\\bimacs_derived_data_body_pose\\"
-):
-    """Return a dataset of bimanual actions"""
-    data_dir = os.path.join(root_dir, "bimacs_derived_data")
-    gt_dir = os.path.join(root_dir, "bimacs_rgbd_data_ground_truth")
-    takes = []
-    flag = False
-    for sub_folder in os.listdir(data_dir):
-        for task_folder in os.listdir(os.path.join(data_dir, sub_folder)):
-            for take_folder in os.listdir(
-                os.path.join(data_dir, sub_folder, task_folder)
-            ):
-                gt_file = os.path.join(
-                    gt_dir, sub_folder, task_folder, take_folder + ".json"
-                )
-                if not flag:
-                    takes.append(
-                        get_bmdataset(
-                            os.path.join(
-                                data_dir,
-                                sub_folder,
-                                task_folder,
-                                take_folder,
-                                "body_pose",
-                            ),
-                            gt_file,
-                            max_frame,
-                        )
-                    )
-                    flag = True
-
-    return ConcatDataset(takes)
-
 
 class HackathonDataModule(pl.LightningDataModule):
     """ 

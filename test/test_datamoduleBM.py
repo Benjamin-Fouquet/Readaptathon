@@ -2,7 +2,7 @@ import sys
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from datamodules import HackathonDataModule
+from aaha_datamodules import HackathonDataModule
 import torch
 import psutil
 import holoviews as hv

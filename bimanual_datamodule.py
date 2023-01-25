@@ -5,7 +5,7 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 from torch.utils.data import DataLoader, Dataset
-from datamodules import normalize_tensor
+from aaha_datamodules import normalize_tensor
 from interpolation.tool_box import getPosesBM
 
 

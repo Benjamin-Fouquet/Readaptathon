@@ -28,7 +28,7 @@ import argparse
 home = expanduser("~")
 
 from G_CNN import Model as G_CNN
-from datamodules import HackathonDataModule
+from aaha_datamodules import HackathonDataModule
 
 
 # SET VARIABLES ###############################################################################################
