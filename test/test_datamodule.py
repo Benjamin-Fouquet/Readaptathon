@@ -15,6 +15,7 @@ import datashader as ds
 import datashader.transfer_functions as tf
 from datashader.bundling import connect_edges, hammer_bundle
 
+#<---------------AAH DataModule testing and visualization --------------->
 
 if __name__ == "__main__":
     dm=HackathonDataModule('test/datapath_test','test/scores.json',list(range(1,8)),batch_size=1)
