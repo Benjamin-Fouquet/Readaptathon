@@ -1,4 +1,4 @@
-from models import HackaConv, HackaConvLSTM, HackaConvPretraining #TODO, to change to namespace specific import before git
+from models import HackaConvNet, HackaConvLSTMNet, HackaConvPretraining #TODO, to change to namespace specific import before git
 import datamodules
 import pytorch_lightning as pl
 import torch
@@ -19,21 +19,21 @@ train_loader = dm.train_dataloader()
 val_loader = dm.val_dataloader()
 # x, y = next(iter(train_loader))
 
-model = HackaConv().load_from_checkpoint(checkpoint_path=ckpt, num_layers=3, num_channels=21, kernel_size=3, lr=1e-4, strict=False)
+model = HackaConvNet().load_from_checkpoint(checkpoint_path=ckpt, num_layers=3, num_channels=21, kernel_size=3, lr=1e-4, strict=False)
 
 #freeze
 # model.freeze()
 # for param in model.layers[-2].parameters():
 #     param.requires_grad = True
 
-model = HackaConv(num_layers=3, num_channels=21, kernel_size=3, lr=1e-4)
+model = HackaConvNet(num_layers=3, num_channels=21, kernel_size=3, lr=1e-4)
 trainer = pl.Trainer(gpus=gpus, max_epochs=epochs)
 trainer.fit(model, train_loader, val_dataloaders=val_loader)
 
-# model = HackaConv(num_layers=5, num_channels=21, kernel_size=3, lr=1e-5)
+# model = HackaConvNet(num_layers=5, num_channels=21, kernel_size=3, lr=1e-5)
 # trainer = pl.Trainer(gpus=gpus, max_epochs=epochs, log_every_n_steps=10)
 # trainer.fit(model, train_loader, val_dataloaders=val_loader)
 
-# model = HackaConvLSTM(lr=1e-5)
+# model = HackaConvLSTMNet(lr=1e-5)
 # trainer = pl.Trainer(gpus=gpus, max_epochs=epochs, log_every_n_steps=10)
 # trainer.fit(model, train_loader, val_dataloaders=val_loader)
