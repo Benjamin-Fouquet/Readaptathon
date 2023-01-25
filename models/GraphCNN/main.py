@@ -33,14 +33,14 @@ from datamodules import HackathonDataModule
 
 # SET VARIABLES ###############################################################################################
 parser = argparse.ArgumentParser(description='Dynamic MRI Reconstruction')
-parser.add_argument('-o', '--output_path', help='InOutput path', type=str, required=False, default = home+'/Documents/hackathon/Results/')
+parser.add_argument('-o', '--output_path', help='Output path', type=str, required=False, default = home+'/Documents/hackathon/Results/')
 parser.add_argument('-p', '--prefix', help='Prefix', type=str, required=True)
 parser.add_argument('-g', '--gpu', help='gpu to use', type=int, required=False, default = 0)
 parser.add_argument('-n', '--num_epochs', help='Max number of epochs', type=int, required=False, default=100)
 parser.add_argument('-d', '--data_path', help='Data path', type=str, required=False, default='/home/claire/Documents/hackathon/AHA/media/rousseau/Seagate5To/Sync-Data/AHA/derivatives-one-skeleton/')
 parser.add_argument('-k', '--keypoints', help='Path to keypoints file', type=list, required=False, default = [1, 2, 3, 4, 5, 6, 7])
 parser.add_argument('-s', '--score_path', help='Path to score file', type=str, required=False, default="/home/claire/Documents/hackathon/AHA/aha_scores.json")
-parser.add_argument('-S', '--strategy', help='Strategy for the adjacence matrix to use', type=str, required=False, default="spatial")
+parser.add_argument('-S', '--strategy', help='Strategy to use for the adjacence matrix', type=str, required=False, default="spatial")
 args = parser.parse_args()
 
 # NETWORK #####################################################################################################
