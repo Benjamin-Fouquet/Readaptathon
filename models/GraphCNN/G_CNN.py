@@ -39,23 +39,28 @@ class Graph():
     """ The Graph to model the skeletons extracted by the openpose
     Args:
         strategy (string): must be one of the follow candidates
-        - uniform: Uniform Labeling
-        - distance: Distance Partitioning
-        - spatial: Spatial Configuration
-        For more information, please refer to the section 'Partition Strategies'
-            in our paper (https://arxiv.org/abs/1801.07455).
+            - uniform: Uniform Labeling
+            - distance: Distance Partitioning
+            - spatial: Spatial Configuration
+            For more information, please refer to the section 
+                'Partition Strategies' in our paper 
+                (https://arxiv.org/abs/1801.07455).
         layout (string): must be one of the follow candidates
-        - openpose: Is consists of 18 joints. For more information, please
-            refer to https://github.com/CMU-Perceptual-Computing-Lab/openpose#output
-        - ntu-rgb+d: Is consists of 25 joints. For more information, please
-            refer to https://github.com/shahroudy/NTURGB-D
+            - openpose: Is consists of 18 joints. For more information, please
+                refer to 
+                https://github.com/CMU-Perceptual-Computing-Lab/openpose#output
+            - ntu-rgb+d: Is consists of 25 joints. For more information, please
+                refer to https://github.com/shahroudy/NTURGB-D
+            - AHA: Is consists of 7 joints. For more information, please refer
+                to https://github.com/Benjamin-Fouquet/Readaptathon
         max_hop (int): the maximal distance between two connected nodes
-        dilation (int): controls the spacing between the kernel points
+        dilation (int): controls the spacing between the kernel points (in 
+            nodes)https://github.com/Benjamin-Fouquet/Readaptathon
     """
 
     def __init__(self,
                  layout='AHA',
-                 strategy= 'uniform', #'uniform',
+                 strategy= 'uniform',
                  max_hop=1,
                  dilation=1):
         self.max_hop = max_hop
@@ -69,7 +74,22 @@ class Graph():
     def __str__(self):
         return self.A
 
-    def get_edge(self, layout): #OK
+    def get_edge(self, layout):
+        """
+        Defines the relationships between nodes and the total number of joints
+        in the skeleton as well as the reference node.
+
+        Parameters
+        ----------
+        layout : string
+            specifies which joints layout to use.
+
+        Returns
+        -------
+        None.
+        
+        """        
+
         if layout == 'openpose':
             self.num_node = 18
             self_link = [(i, i) for i in range(self.num_node)]
@@ -104,7 +124,6 @@ class Graph():
         elif layout=='AHA':
             self.num_node = 7
             self_link = [(i, i) for i in range(self.num_node)]
-            #neighbor_link = [(4, 3), (3, 2), (7, 6), (6, 5), (5, 1), (2, 1)]
             neighbor_link = [(3, 2), (2, 1), (6, 5), (5, 4), (4, 0), (1, 0)]
             self.edge = self_link + neighbor_link
             self.center = 1
@@ -112,6 +131,19 @@ class Graph():
             raise ValueError("Do Not Exist This Layout.")
 
     def get_adjacency(self, strategy):
+        """
+        Defines the adjacency matrix.
+
+        Parameters
+        ----------
+        strategy : string
+            defines the strategy for building the adjacency matrix.
+        
+        Returns
+        -------
+        None.
+        
+        """
         valid_hop = range(0, self.max_hop + 1, self.dilation)
         adjacency = np.zeros((self.num_node, self.num_node))
         for hop in valid_hop:
@@ -158,6 +190,24 @@ class Graph():
 
 
 def get_hop_distance(num_node, edge, max_hop=1):
+    """
+    
+
+    Parameters
+    ----------
+    num_node : int
+        the total number of joints in the skeleton.
+    edge : list of tuples
+        defines the relationships between nodes.
+    max_hop : int, optional
+        the maximal distance between two connected nodes. The default is 1.
+
+    Returns
+    -------
+    hop_dis : numpy array
+        DESCRIPTION.
+
+    """
     A = np.zeros((num_node, num_node))
     for i, j in edge:
         A[j, i] = 1
@@ -173,6 +223,20 @@ def get_hop_distance(num_node, edge, max_hop=1):
 
 
 def normalize_digraph(A):
+    """
+    Function for adjacency matrix normalization
+
+    Parameters
+    ----------
+    A : numpy array
+        adjacency matrix.
+
+    Returns
+    -------
+    AD : numpy array
+        normalized adjacency matrix.
+
+    """
     Dl = np.sum(A, 0)
     num_node = A.shape[0]
     Dn = np.zeros((num_node, num_node))
@@ -183,15 +247,29 @@ def normalize_digraph(A):
     return AD
 
 
-def normalize_undigraph(A):
-    Dl = np.sum(A, 0)
-    num_node = A.shape[0]
-    Dn = np.zeros((num_node, num_node))
-    for i in range(num_node):
-        if Dl[i] > 0:
-            Dn[i, i] = Dl[i]**(-0.5)
-    DAD = np.dot(np.dot(Dn, A), Dn)
-    return DAD
+# def normalize_undigraph(A):
+#     """
+    
+
+#     Parameters
+#     ----------
+#     A : TYPE
+#         DESCRIPTION.
+
+#     Returns
+#     -------
+#     DAD : TYPE
+#         DESCRIPTION.
+
+#     """
+#     Dl = np.sum(A, 0)
+#     num_node = A.shape[0]
+#     Dn = np.zeros((num_node, num_node))
+#     for i in range(num_node):
+#         if Dl[i] > 0:
+#             Dn[i, i] = Dl[i]**(-0.5)
+#     DAD = np.dot(np.dot(Dn, A), Dn)
+#     return DAD
 
 
 
@@ -246,6 +324,24 @@ class ConvTemporalGraph(nn.Module):
             bias=bias)
 
     def forward(self, x, A):
+        """
+        
+
+        Parameters
+        ----------
+        x : TYPE
+            DESCRIPTION.
+        A : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+        A : TYPE
+            DESCRIPTION.
+
+        """
         assert A.size(0) == self.kernel_size
 
         x = self.conv(x)
@@ -327,6 +423,24 @@ class st_gcn(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x, A):
+        """
+        
+
+        Parameters
+        ----------
+        x : TYPE
+            DESCRIPTION.
+        A : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+        A : TYPE
+            DESCRIPTION.
+
+        """
 
         res = self.residual(x)
         x, A = self.gcn(x, A)
@@ -395,6 +509,20 @@ class SpatioTempGraphCNN(nn.Module):
         self.fcn = nn.Conv2d(256, num_class, kernel_size=1)
 
     def forward(self, x):
+        """
+        
+
+        Parameters
+        ----------
+        x : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        x : TYPE
+            DESCRIPTION.
+
+        """
 
         # data normalization
         N, C, T, V, M = x.size()
@@ -420,6 +548,22 @@ class SpatioTempGraphCNN(nn.Module):
         return x
 
     def extract_feature(self, x):
+        """
+        
+
+        Parameters
+        ----------
+        x : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        output : TYPE
+            DESCRIPTION.
+        feature : TYPE
+            DESCRIPTION.
+
+        """
 
         # data normalization
         N, C, T, V, M = x.size()
@@ -447,14 +591,8 @@ class SpatioTempGraphCNN(nn.Module):
 
 
 
-
-
-
-
-##### TRAINING #################################################################################################################
-
 class Model(pl.LightningModule):
-    def __init__(self, criterion, learning_rate, optimizer, prefix, gpu, in_channels):
+    def __init__(self, criterion, learning_rate, optimizer, prefix, gpu, in_channels, strategy):
         super().__init__()
         self.learning_rate = learning_rate #0.2
         self.optimizer = optimizer
@@ -462,15 +600,32 @@ class Model(pl.LightningModule):
         self.gpu = gpu
         self.in_channels = in_channels
         self.criterion = criterion
+
         
         graph_args = {"layout" :'AHA',
-                        "strategy":'uniform',
+                        "strategy":strategy,
                         "max_hop":1,
                         "dilation":1}
         
         self.G_CNN = SpatioTempGraphCNN(graph_args)
 
     def prepare_batch(self, batch):
+        """
+        
+
+        Parameters
+        ----------
+        batch : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        sequence : TYPE
+            DESCRIPTION.
+        score : TYPE
+            DESCRIPTION.
+
+        """
         # on veut sequence de shape [batch_size, 3, T, 7, 1]
         #prendre 21, scinder, permute unsqueeze
         sequence, score = batch
@@ -480,10 +635,49 @@ class Model(pl.LightningModule):
 
     def forward(self, x):
         score = self.G_CNN(x)
-        return score 
+        return score
+    
+    def test(self, x):
+        """
+        
+
+        Parameters
+        ----------
+        x : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        score_hat : TYPE
+            DESCRIPTION.
+        score : TYPE
+            DESCRIPTION.
+
+        """
+        sequence, score = self.prepare_batch(x)
+        sequence = sequence.to(torch.device("cuda:"+str(self.gpu)))
+        score = score.to(torch.device("cuda:"+str(self.gpu)))
+        score_hat = self.forward(sequence)
+        return score_hat, score
         
 
     def training_step(self, batch, batch_idx):
+        """
+        
+
+        Parameters
+        ----------
+        batch : TYPE
+            DESCRIPTION.
+        batch_idx : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        loss : TYPE
+            DESCRIPTION.
+
+        """
         sequence, score = self.prepare_batch(batch)
         score_hat = self.forward(sequence)
         loss = self.criterion(score_hat, score)
@@ -494,6 +688,22 @@ class Model(pl.LightningModule):
         return self.optimizer(self.G_CNN.parameters(), lr=self.learning_rate)
     
     def validation_step(self, batch, batch_idx):
+        """
+        
+
+        Parameters
+        ----------
+        batch : TYPE
+            DESCRIPTION.
+        batch_idx : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        loss : TYPE
+            DESCRIPTION.
+
+        """
         sequence, score = self.prepare_batch(batch)
         score_hat = self.forward(sequence)
         loss = self.criterion(score_hat, score)
