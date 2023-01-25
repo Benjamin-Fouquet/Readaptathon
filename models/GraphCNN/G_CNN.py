@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Created on Mon Nov 28 18:00:27 2022
+    The GraphCNN architecture is from the paper https://arxiv.org/abs/1801.07455
+    Link to the github repositery: https://github.com/yysijie/st-gcn
+"""
 
-@author: claire
-"""
+
+
 
 from os.path import expanduser
 from posix import listdir
