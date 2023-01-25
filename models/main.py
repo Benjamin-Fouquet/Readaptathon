@@ -1,58 +1,52 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Nov 29 15:07:11 2022
-
-@author: claire
-"""
 
 from os.path import expanduser
-from posix import listdir
-from numpy import NaN, dtype
-import torchvision
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import DataLoader
 import pytorch_lightning as pl
-import os
-import sys
 from pytorch_lightning.callbacks import ModelCheckpoint
-import matplotlib.pyplot as plt
-import glob
-import multiprocessing
-import math
-from pytorch_lightning.loggers import TensorBoardLogger, tensorboard
+from pytorch_lightning.loggers import TensorBoardLogger
 import argparse
-
 home = expanduser("~")
+import sys
+from models import G_CNN, HackaConvNet, HackaConvPretraining, HackaConvLSTMNet
+from aaha_datamodules import HackathonDataModule
 
-from G_CNN import Model as G_CNN
-from datamodules import HackathonDataModule
 
 
 # SET VARIABLES ###############################################################################################
 parser = argparse.ArgumentParser(description='Dynamic MRI Reconstruction')
 parser.add_argument('-o', '--output_path', help='InOutput path', type=str, required=False, default = home+'/Documents/hackathon/Results/')
-parser.add_argument('-p', '--prefix', help='Prefix', type=str, required=True)
+parser.add_argument('-p', '--prefix', help='Experiment name', type=str, required=False)
 parser.add_argument('-g', '--gpu', help='gpu to use', type=int, required=False, default = 0)
-parser.add_argument('-n', '--num_epochs', help='Max number of epochs', type=int, required=False, default=100)
+parser.add_argument('-n', '--num_epochs', help='Max number of epochs', type=int, required=True)
 parser.add_argument('-d', '--data_path', help='Data path', type=str, required=False, default='/home/claire/Documents/hackathon/AHA/media/rousseau/Seagate5To/Sync-Data/AHA/derivatives-one-skeleton/')
 parser.add_argument('-k', '--keypoints', help='Path to keypoints file', type=list, required=False, default = [1, 2, 3, 4, 5, 6, 7])
 parser.add_argument('-s', '--score_path', help='Path to score file', type=str, required=False, default="/home/claire/Documents/hackathon/AHA/aha_scores.json")
 parser.add_argument('-S', '--strategy', help='Strategy to use for the adjacence matrix', type=str, required=False, default="spatial")
+parser.add_argument('--architecture', help='Architecture to use for training (GraphConv or Conv)', type=str, required=True, default=None)
+parser.add_argument('--checkpoint', help='Loading a pretrained model', type=str, required=False, default=None)
 args = parser.parse_args()
 
 
 # NETWORK #####################################################################################################
-Net = G_CNN(
-    criterion = torch.nn.L1Loss(), 
-    learning_rate = 1e-4, 
-    optimizer = torch.optim.Adam, 
-    gpu = 0, 
-    in_channels = 1,
-    strategy = args.strategy
-    )
+if args.architecture == 'GraphConv':
+    Net = G_CNN(
+        criterion = torch.nn.L1Loss(), 
+        learning_rate = 1e-4, 
+        optimizer = torch.optim.Adam, 
+        gpu = 0, 
+        in_channels = 1,
+        strategy = args.strategy
+        )
+elif args.architecture == 'Conv':
+    Net = HackaConvNet(
+        num_layers=3, 
+        num_channels=21, 
+        kernel_size=3, 
+        lr=1e-4
+        )
+else:
+    sys.exit("Please specify the network architecture that hace to be used for training")
+    
 
 # DATASET ####################################################################################################
 datamodule = HackathonDataModule(args.data_path, args.score_path, args.keypoints, 1)
@@ -63,13 +57,27 @@ train_loader = datamodule.train_dataloader()
 val_loader = datamodule.val_dataloader()
 
 
+# CHECKPOINT LOADING ###################################################################################################
+if args.checkpoint == None:
+    pass
+else:
+    if args.checkpoint.split('/')[-1].split('.')[-1]=='pt':
+        Net.load_state_dict(torch.load(args.checkpoint))
+    elif args.checkpoint.split('/')[-1].split('.')[-1]=='ckpt':
+        Net.load_state_dict(torch.load(args.checkpoint)['state_dict'])
+    else:
+        sys.exit('Entrez un ckeckpoint valide')
+
+
 # TRAINING ###################################################################################################
 checkpoint_callback = ModelCheckpoint(filepath=args.output_path+'Checkpoint_'+args.prefix+'_{epoch}-{val_loss:.2f}')#, save_top_k=1, monitor=)
 
 logger = TensorBoardLogger(save_dir = args.output_path, name = 'Test_logger',version=args.prefix)
 
+GPU = [args.gpu] if torch.cuda.is_available() else []
+
 trainer = pl.Trainer(
-    gpus=[args.gpu],
+    gpus=GPU,
     max_epochs=args.num_epochs,
     progress_bar_refresh_rate=20,
     logger=logger,
@@ -81,9 +89,3 @@ trainer.fit(Net, train_loader, val_loader)
 torch.save(Net.state_dict(), args.output_path+args.prefix+'_torch.pt')
 
 print('Finished Training')
-
-
-# # TESTING ###################################################################################################
-# I=validation_set[0]
-# T=training_set[0]
-# score = Net.forward(I)
