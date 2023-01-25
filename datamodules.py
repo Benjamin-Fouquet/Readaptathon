@@ -30,16 +30,6 @@ from interpolation.tool_box import (
 from torch.utils.data import ConcatDataset
 from interpolation.interpolation import interpolate, remove_anomalies
 
-def async_loader(func):
-    """Run a function in parallel"""
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        thread = threading.Thread(target=func, args=args, kwargs=kwargs)
-        thread.start()
-        return thread
-
-    return wrapper
 n_keypoints = 25 # number of original keypoints in json files
 keypoints = [1, 2, 3, 4, 5, 6, 7] # keypoints to keep
 datapath = (
