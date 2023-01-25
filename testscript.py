@@ -1,4 +1,4 @@
-from models import HackaConv, HackaConvLSTM, HackConvPretraining #TODO, to change to namespace specific import before git
+from models import HackaConv, HackaConvLSTM, HackaConvPretraining #TODO, to change to namespace specific import before git
 import datamodules
 import pytorch_lightning as pl
 import torch

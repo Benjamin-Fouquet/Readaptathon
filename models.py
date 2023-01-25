@@ -104,9 +104,11 @@ class HackaConvLSTMNet(HackaConvNet):
         self.layers.append(nn.Sigmoid()) 
 
 
-class HackaConvNetPretraining(pl.LightningModule):
+class HackaConvPretraining(pl.LightningModule):
     '''
-    Pre-trainable architecture on gesture recognition dataset. First layers can be imported into a HackaConv instance and frozen.
+    Parametrisable class for 1d conv following the following architecture from "check paper from Chloe"
+    TODO / open questions:
+    -How to properly collapse t before fully connected
     '''
     def __init__(self, num_layers=1, num_channels=21, kernel_size=3, lr=1e-4, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -152,3 +154,5 @@ class HackaConvNetPretraining(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
+
+        
