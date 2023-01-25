@@ -9,7 +9,8 @@ batch_size = 12
 
 datapath = 'data/media/rousseau/Seagate5To/Sync-Data/AHA/derivatives-one-skeleton'
 score_path = "data/aha_scores.json"
-ckpt = 'data/pretrained_conv1d.ckpt'
+ckpt = None
+# ckpt = 'data/pretrained_conv1d.ckpt'
 
 dm = datamodules.HackathonDataModule(datapath=datapath, score_path=score_path, batch_size=batch_size)
 dm.prepare_data() #very slow, opti possible?
@@ -19,7 +20,10 @@ train_loader = dm.train_dataloader()
 val_loader = dm.val_dataloader()
 # x, y = next(iter(train_loader))
 
-model = HackaConvNet().load_from_checkpoint(checkpoint_path=ckpt, num_layers=3, num_channels=21, kernel_size=3, lr=1e-4, strict=False)
+if ckpt:
+    model = HackaConvNet().load_from_checkpoint(checkpoint_path=ckpt, num_layers=3, num_channels=21, kernel_size=3, lr=1e-4, strict=False)
+else:
+    model = HackaConvNet(num_layers=3, num_channels=21, kernel_size=3, lr=1e-4)
 
 #freeze
 # model.freeze()
