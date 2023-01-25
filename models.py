@@ -38,7 +38,7 @@ class HackaConv(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         z = self(x)
-        loss = F.mse_loss(z, y)#Binary 
+        loss = F.mse_loss(z, y)
         self.losses.append(loss.detach().cpu().numpy())
 
         self.log("train_loss", loss)
@@ -47,7 +47,7 @@ class HackaConv(pl.LightningModule):
     def validation_step(self, batch, batch_idx, *args, **kwargs):
         x, y = batch
         z = self(x)
-        loss = F.mse_loss(z, y)#Binary 
+        loss = F.mse_loss(z, y)
         self.losses.append(loss.detach().cpu().numpy())
 
         self.log("val_loss", loss)
