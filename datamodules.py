@@ -30,8 +30,6 @@ from interpolation.tool_box import (
 from torch.utils.data import ConcatDataset
 from interpolation.interpolation import interpolate, remove_anomalies
 
-
-
 def async_loader(func):
     """Run a function in parallel"""
 
@@ -42,9 +40,6 @@ def async_loader(func):
         return thread
 
     return wrapper
-
-
-
 n_keypoints = 25 # number of original keypoints in json files
 keypoints = [1, 2, 3, 4, 5, 6, 7] # keypoints to keep
 datapath = (
@@ -356,8 +351,6 @@ class HackathonDataModule(pl.LightningDataModule):
     """ 
     pytorch lightning datamodule.
     datapath, score_path and keypoints -> for the HackathonDataset
-    
-    
     """
     def __init__(
         self,
@@ -434,10 +427,202 @@ class HackathonDataModule(pl.LightningDataModule):
         return None
 
 
+class HackathonDatasetFromTensor(Dataset):
+    """ 
+    Dataset of (subject pose,score) of the AHA evaluation. From pre-loaded and save tensors.
+    To preload tensor use convert_data_to_tensor(...) function.
+    """
+    def __init__(self, datapath: str, keypoints) -> None:
+        """ 
+        Args: 
+            datapath: path of the folder in which pose tensor were saved
+            keypoints: keypoints of pose to use
+        """
+        super().__init__()
+        self.datapath: str = datapath
+        self.keypoints = keypoints
+        self.subjects = []
+        
+        scores = []
+        data = []
+
+        for folder in os.listdir(datapath):
+            
+            d = torch.load(f"{datapath}/{folder}")
+
+            if d["score"]>0: 
+                self.subjects.append(folder)
+                data.append(d["tensor"][keypoints[0]*3 : (keypoints[-1]+1)*3])
+                scores.append( float( d["score"] ) )
+
+
+        self.tensor = torch.cat( [dt.unsqueeze(0) for dt in data] )
+        self.scores = torch.tensor( scores )
+
+    def __len__(self):
+        return len(self.subjects)
+
+    def __getitem__(self, index) -> None:
+        # 1 subject, 1 score
+        return (
+            self.tensor[index, ...],
+            self.scores[index],
+        ) 
+
+class HackathonDataModuleFromTensor(pl.LightningDataModule):
+    """ 
+    Pytorch lightning datamodule for the dataset HackthonDatasetFromTensor
+    """
+    def __init__(
+        self,
+        datapath: str = None,
+        keypoints=list(np.arange(1, 8, dtype=int)),
+        batch_size: int = 1,
+        shuffle_dataset: bool = True,
+    ):
+        super().__init__()
+        self.datapath = datapath
+        self.keypoints = keypoints
+        self.batch_size = batch_size
+        self.shuffle_dataset = shuffle_dataset
+
+    def prepare_data(self) -> None:
+        self.dataset = HackathonDatasetFromTensor(
+            self.datapath, self.keypoints
+        )
+        return None
+
+    def setup(self, split: float = 0.2) -> None:
+        # create indices to split dataset
+        indices = list(range(len(self.dataset)))
+        if self.shuffle_dataset:
+            np.random.shuffle(indices)
+        train_indices, val_indices = (
+            indices[int(split * len(self.dataset)) :],
+            indices[: int(split * len(self.dataset))],
+        )
+        if len(indices) == 1:
+            print("len indices = 1")
+            self.train_ds, self.val_ds = self.dataset, self.dataset
+        else:
+            self.train_ds = [self.dataset[k] for k in train_indices]
+            self.val_ds = [self.dataset[k] for k in val_indices]
+
+        self.test_ds = None
+        # reflechir sur norm, best approach prob. {xi}, {yi} min/max. Pas touche les C TODO
+
+        return None
+
+    def train_dataloader(self) -> DataLoader:
+        return DataLoader(
+            self.train_ds,
+            self.batch_size,
+            shuffle=True,
+            num_workers=os.cpu_count(),
+        )
+
+    def val_dataloader(self) -> DataLoader:
+        return DataLoader(
+            self.val_ds,
+            self.batch_size,
+            shuffle=False,
+            num_workers=os.cpu_count(),
+        )
+
+    def test_dataloader(self) -> DataLoader:
+        return None
+
+
+def convert_data_to_tensor( datapath: str, score_path:str, store_tensor_folder:str):
+    """ 
+    Converts json files of pose extraction of videos in datapath to tensor.
+    Saves tensor and scores for each subject (dictionary). 
+
+    Args: 
+        datapath: path of the fodler containing the pose extractions
+        score_path: path to the score file
+        store_tensor_folder: folder in which to save the tensor and score ".pt" files
+
+    Returns:
+        subjects: list of the folder containing data of pose extraction
+   
+    """
+
+    last_timestp    = []
+    empty_folders   = []
+    subjects        = []
+
+    for folder in os.listdir(datapath):
+        l_timestp = get_last_timestp(f"{datapath}/{folder}", verbose=False)
+        if type(l_timestp) is int:
+            subjects.append(folder)
+            last_timestp.append(get_last_timestp(f"{datapath}/{folder}"))
+        else:
+            empty_folders.append(l_timestp)
+    
+    max_timestp = np.max(np.array(last_timestp))
+    max_timestp = max_timestp
+    
+    # loading scores
+    with open(score_path, "r") as f:
+        score_dict = json.load(f)
+
+    for folder in os.listdir(datapath):
+
+        if f"{datapath}/{folder}" not in empty_folders:
+            subject = folder
+
+            frame_points = getPoses(f"{datapath}/{folder}")
+            
+            interp_frame_points = interpolate_points_to_video(frame_points)
+
+            padded_interp_frame_points = np.zeros(
+                (1, max_timestp, n_keypoints, 3), dtype=np.float32
+            )
+            padded_interp_frame_points[
+                0, : interp_frame_points.shape[0], ...
+            ] = interp_frame_points[:, :, 1:]
+
+            
+
+            tmp_tensor = torch.from_numpy(
+                padded_interp_frame_points.reshape(
+                    (
+                        max_timestp,
+                        n_keypoints * 3,
+                    )
+                )
+            ).swapaxes(0, 1)
+
+            score = score_dict[subject]
+
+
+            tensor_dict = {"tensor":tmp_tensor, "score":score}
+            torch.save(tensor_dict, f"{store_tensor_folder}/{subject}.pt")
+    
+    return subjects
+
+
 ###############################
 
 if __name__ == "__main__":
-    datamodule = HackathonDataModule(datapath, score_path, keypoints, 1)
+    # datamodule = HackathonDataModule(datapath, score_path, keypoints, 1)
+    # datamodule.prepare_data()
+    # datamodule.setup()
+
+    # train_loader = datamodule.train_dataloader()
+    # val_loader = datamodule.val_dataloader()
+
+    open_pose_files = f"{datapath}/derivatives-one-skeleton"
+    store_tensor_folder = f"{datapath}/tensors"
+
+    # This must be done before using the version of the datamodule that loads the tensors.
+    # Only pre-processing done on the recorded tensors: frame interpolation
+    if not os.path.exists(store_tensor_folder): 
+        os.mkdir(store_tensor_folder)
+        _ , ifp= convert_data_to_tensor(datapath=open_pose_files, score_path=score_path, store_tensor_folder=store_tensor_folder)
+
+    datamodule = HackathonDataModuleFromTensor(store_tensor_folder, keypoints, 1)
     datamodule.prepare_data()
     datamodule.setup()
 
