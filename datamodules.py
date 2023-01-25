@@ -1,7 +1,7 @@
 """
 Datamodules for hackathon project of November 2022
-- AHA evaluation dataset
-- Bimanual action dataset from: ...
+- AHA evaluation dataset from Ildys
+- Bimanual action dataset from: https://bimanual-actions.humanoids.kit.edu/
 """
 
 import json
