@@ -48,7 +48,7 @@ elif args.architecture == 'ConvLSTM':
     Net = HackaConvLSTMNet(lr=1e-5)
     
 else:
-    sys.exit("Please specify the network architecture that hace to be used for training")
+    sys.exit("Please specify the network architecture that have to be used for training")
     
 
 # DATASET ####################################################################################################
