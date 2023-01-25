@@ -1,7 +1,7 @@
 """
 Datamodules for hackathon project of November 2022
-- AHA evaluation dataset
-- Bimanual action dataset from: ...
+- AHA evaluation dataset from Ildys
+- Bimanual action dataset from: https://bimanual-actions.humanoids.kit.edu/
 """
 
 import json
@@ -76,7 +76,7 @@ def interp_clean(y, window_length=31, poly_order=3, threshold=150):
     Args:
         y: Data points.
         window_length: Window length used during interpolation. Defaults to 31.
-        poly_order: Polynomail order used during interpolztion. Defaults to 3.
+        poly_order: Polynomial order used during interpolation. Defaults to 3.
         threshold: Threshold above which anomalies are removed. Defaults to 150.
 
     Returns:

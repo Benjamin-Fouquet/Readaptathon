@@ -7,9 +7,13 @@ import pytorch_lightning as pl
 from typing import Any
 import torch.nn.functional as F
 
-class HackaConv(pl.LightningModule):
+class HackaConvNet(pl.LightningModule):
     '''
     Parametrisable class for 1d conv following the following architecture from "Salami et al.:Using Deep Neural Networks for Human Fall Detection Based on Pose"
+    Attributes:
+        layers (torch.nn): Module list of layers for the network
+        losses (list): Log of losses
+        lr (float): learning rate for the network
     '''
     def __init__(self, num_layers=1, num_channels=21, kernel_size=3, lr=1e-4, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -71,9 +75,13 @@ class HackaConv(pl.LightningModule):
         self.load_state_dict(p_dict)
 
 
-class HackaConvLSTM(HackaConv):
+class HackaConvLSTMNet(HackaConvNet):
     '''
     1d conv network with added LSTM. LSTM size is hardcoded to fit our particular datamodule
+    Attributes:
+        layers (torch.nn): Module list of layers for the network
+        losses (list): Log of losses
+        lr (float): learning rate for the network
     '''
     def __init__(self, num_layers=5, num_channels=21, kernel_size=3, lr=0.001, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -96,13 +104,13 @@ class HackaConvLSTM(HackaConv):
         self.layers.append(nn.Sigmoid()) 
 
 
-class HackaConvPretraining(pl.LightningModule):
+class HackaConvNetPretraining(pl.LightningModule):
     '''
     Pre-trainable architecture on gesture recognition dataset. First layers can be imported into a HackaConv instance and frozen.
     '''
     def __init__(self, num_layers=1, num_channels=21, kernel_size=3, lr=1e-4, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.layers= HackaConv(num_layers=num_layers, num_channels=num_channels, kernel_size=kernel_size, lr=lr).layers[:-2]
+        self.layers= HackaConvNet(num_layers=num_layers, num_channels=num_channels, kernel_size=kernel_size, lr=lr).layers[:-2]
         self.left_layer=nn.LazyLinear(out_features=14)
         self.right_layer=nn.LazyLinear(out_features=14)
         self.lr = lr
