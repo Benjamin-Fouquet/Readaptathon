@@ -55,12 +55,14 @@ file_path = f"{datapath}/020101_aha_j0.json"
 
 
 def get_last_timestp(folder, verbose=True):
-    """ 
-    Return the last timestep of a video if poses where extracted from the video (non empty folder). 
-    Returns the folder name is the folder is empty.
+    """Get the last timestep of a video (if poses were extracted) 
+    
     Args: 
-    - folder: the folder in which the different files of a video are stored.
-    - verbose: verbose attribute
+        folder: the folder in which the different files of a video are stored.
+        verbose: verbose attribute
+    Returns: 
+        last_timestep if poses were extracted (folder not empty)
+        folder if no poses were extracted (folder empty)
     """
     files = os.listdir(folder)
     if len(files) > 0:
