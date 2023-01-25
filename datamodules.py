@@ -1,15 +1,7 @@
 """
 Datamodules for hackathon project of November 2022
-Status:
--Functionnal datamodule for 1 subject
-
-TODO: @Sarah
--Integration of helper functions in dataset 
--Discussion on normalisation
--Interpolation so that all subjects have the same number of points originally 
-    -> v1: all subjects match the number of frames from the longest video : done
-    -> TODO: v2: interpolate each video w.r.t itself and padd sequence with zero (beginning or end) to match length
--Tests and/or visu on datamodule
+- AHA evaluation dataset
+- Bimanual action dataset from: ...
 """
 
 import json
