@@ -7,7 +7,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 import argparse
 home = expanduser("~")
 import sys
-from models import G_CNN, HackaConvNet, HackaConvPretraining, HackaConvLSTMNet
+from models import G_CNN, HackaConvNet, HackaConvLSTMNet, HackaConvPretraining
 from aaha_datamodules import HackathonDataModule
 
 
@@ -22,7 +22,7 @@ parser.add_argument('-d', '--data_path', help='Data path', type=str, required=Fa
 parser.add_argument('-k', '--keypoints', help='Path to keypoints file', type=list, required=False, default = [1, 2, 3, 4, 5, 6, 7])
 parser.add_argument('-s', '--score_path', help='Path to score file', type=str, required=False, default="/home/claire/Documents/hackathon/AHA/aha_scores.json")
 parser.add_argument('-S', '--strategy', help='Strategy to use for the adjacence matrix', type=str, required=False, default="spatial")
-parser.add_argument('--architecture', help='Architecture to use for training (GraphConv or Conv)', type=str, required=True, default=None)
+parser.add_argument('--architecture', help='Architecture to use for training (GraphConv, Conv or ConvLSTM)', type=str, required=True, default=None)
 parser.add_argument('--checkpoint', help='Loading a pretrained model', type=str, required=False, default=None)
 args = parser.parse_args()
 
@@ -44,6 +44,9 @@ elif args.architecture == 'Conv':
         kernel_size=3, 
         lr=1e-4
         )
+elif args.architecture == 'ConvLSTM':
+    Net = HackaConvLSTMNet(lr=1e-5)
+    
 else:
     sys.exit("Please specify the network architecture that hace to be used for training")
     
