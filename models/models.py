@@ -683,7 +683,7 @@ class HackaConvLSTMNet(HackaConvNet):
         self.layers.append(nn.Dropout(p=0.1))
         self.layers.append(nn.AvgPool1d(kernel_size=10))
         self.layers.append(nn.Flatten())
-        self.layers.append(nn.LSTM(input_size=6552, hidden_size=6552, num_layers=2)) #slide needed
+        self.layers.append(nn.LSTM(input_size=6552, hidden_size=64, num_layers=2)) #slide needed
         self.layers.append(nn.LazyLinear(out_features=1))
         self.layers.append(nn.Sigmoid()) 
 
