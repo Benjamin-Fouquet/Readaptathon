@@ -43,16 +43,6 @@ parser.add_argument('-s', '--score_path', help='Path to score file', type=str, r
 parser.add_argument('-S', '--strategy', help='Strategy for the adjacence matrix to use', type=str, required=False, default="spatial")
 args = parser.parse_args()
 
-
-#output_path = home+'/Documents/hackathon/Results/'
-#prefix = 'test_01_G_CNN'
-#gpu = 0
-#num_epochs = 100
-#datapath = '/home/claire/Documents/hackathon/AHA/media/rousseau/Seagate5To/Sync-Data/AHA/derivatives-one-skeleton/'
-# keypoints = [1, 2, 3, 4, 5, 6, 7]
-# score_path = "/home/claire/Documents/hackathon/AHA/aha_scores.json"
-# strategy = 'spatial'
-
 # NETWORK #####################################################################################################
 Net = G_CNN(
     criterion = torch.nn.L1Loss(), 
