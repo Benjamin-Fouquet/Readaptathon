@@ -1,5 +1,5 @@
-from pretraining_models import HackaConvPretraining
-from pretraining_graph import Model
+from pretraining_models import HackConvPretraining
+# from pretraining_graph import Model
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
@@ -7,11 +7,11 @@ from typing import Any
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from datamodules import BimanualActionsDataModule
+from bimanual_datamodule import BimanualActionsDataModule
 
 model_type='hackconv'
-
-dm=BimanualActionsDataModule(batch_size=32,max_frame=1000)
+bm_dataset_folder='path/to/bimanual_dataset'
+dm=BimanualActionsDataModule(bm_dataset_folder,batch_size=32,max_frame=1000)
 
 if model_type=='hackconv':
     model=HackaConvPretraining(num_layers=3,num_channels=21,lr=0.001)
