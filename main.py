@@ -7,7 +7,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 import argparse
 home = expanduser("~")
 import sys
-from models import G_CNN, HackaConvNet, HackaConvLSTMNet, HackaConvPretraining
+from models import HackaConvNet, HackaConvLSTMNet, HackaConvPretraining, G_CNN
 from aaha_datamodules import HackathonDataModule
 
 
@@ -23,11 +23,11 @@ parser.add_argument('-s', '--score_path', help='Path to score file', type=str, r
 #TRAINING
 parser.add_argument('-p', '--prefix', help='Experiment name', type=str, required=False)
 parser.add_argument('-g', '--gpu', help='gpu to use', type=int, required=False, default = 0)
-parser.add_argument('-n', '--num_epochs', help='Max number of epochs', type=int, required=True)
+parser.add_argument('-n', '--num_epochs', help='Max number of epochs', type=int, required=False, default=1)
 parser.add_argument('--checkpoint', help='Loading a pretrained model', type=str, required=False, default=None)
 
 #NETWORK
-parser.add_argument('--architecture', help='Architecture to use for training (GraphConv, Conv or ConvLSTM)', type=str, required=True, default=None)
+parser.add_argument('--architecture', help='Architecture to use for training (GraphConv, Conv or ConvLSTM)', type=str, required=False, default='Conv')
 parser.add_argument('-S', '--strategy', help='Strategy to use for the adjacence matrix', type=str, required=False, default="spatial")
 args = parser.parse_args()
 
@@ -81,18 +81,21 @@ else:
 
 
 # TRAINING ###################################################################################################
-checkpoint_callback = ModelCheckpoint(filepath=args.output_path+'Checkpoint_'+args.prefix+'_{epoch}-{val_loss:.2f}')#, save_top_k=1, monitor=)
+checkpoint_callback = None
+logger = None
+if args.prefix is not None:
+    checkpoint_callback = ModelCheckpoint(filepath=args.output_path+'Checkpoint_'+args.prefix+'_{epoch}-{val_loss:.2f}')#, save_top_k=1, monitor=)
 
-logger = TensorBoardLogger(save_dir = args.output_path, name = 'Test_logger',version=args.prefix)
+    logger = TensorBoardLogger(save_dir = args.output_path, name = 'Test_logger',version=args.prefix)
 
 GPU = [args.gpu] if torch.cuda.is_available() else []
 
 trainer = pl.Trainer(
     gpus=GPU,
     max_epochs=args.num_epochs,
-    progress_bar_refresh_rate=20,
+    # progress_bar_refresh_rate=20,
     logger=logger,
-    checkpoint_callback= checkpoint_callback,
+    # checkpoint_callback=checkpoint_callback,
     precision=16
 )
 
