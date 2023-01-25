@@ -3,36 +3,15 @@
     Link to the github repositery: https://github.com/yysijie/st-gcn
 """
 
-
-
-
 from os.path import expanduser
-from posix import listdir
-from numpy import NaN, dtype
-#from torch.optim import optimizer
-from torch.autograd import Variable
-from torch.optim import lr_scheduler
 home = expanduser("~")
-
-import torchvision
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
 import pytorch_lightning as pl
-import os
-import sys
-from pytorch_lightning.callbacks import ModelCheckpoint
 import matplotlib
 matplotlib.use('Agg')
-from matplotlib import pyplot as plt
-import glob
-import multiprocessing
-import math
-
-from pytorch_lightning.loggers import TensorBoardLogger, tensorboard
-import argparse
 
 
 class Graph():
