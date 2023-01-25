@@ -96,7 +96,7 @@ class HackaConvLSTM(HackaConv):
         self.layers.append(nn.Sigmoid()) 
 
 
-class HackConvPretraining(pl.LightningModule):
+class HackaConvPretraining(pl.LightningModule):
     '''
     Pre-trainable architecture on gesture recognition dataset. First layers can be imported into a HackaConv instance and frozen.
     '''
