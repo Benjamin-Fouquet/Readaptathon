@@ -205,7 +205,7 @@ def get_hop_distance(num_node, edge, max_hop=1):
     Returns
     -------
     hop_dis : numpy array
-        DESCRIPTION.
+        matrix of distances between every pairs of nodes.
 
     """
     A = np.zeros((num_node, num_node))
