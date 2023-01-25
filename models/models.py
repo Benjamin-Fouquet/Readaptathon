@@ -516,7 +516,7 @@ class SpatioTempGraphCNN(nn.Module):
 
 
 
-class Model(pl.LightningModule):
+class G_CNN(pl.LightningModule):
     r"""Ligthning Module for training and testing the model on AHA data.
     Args:
         criterion : the function that defines the loss to be used for training
