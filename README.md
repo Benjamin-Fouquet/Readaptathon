@@ -19,6 +19,8 @@ Salami et al.:Using Deep Neural Networks for Human Fall Detection Based on Pose
   
 Yann et Al.: Spatial Temporal Graph Convolutional Networks for Skeleton-Based Action Recognition  
 
+Code can be started via the main.py file, default parameters are provided to be able to run training and inference, as well as a cli. Please check the cli description for a description of its usage.
+
 
 
 
