@@ -88,6 +88,9 @@ class HackaConvLSTMNet(HackaConvNet):
         self.layers = nn.ModuleList([])
         self.losses = []
         self.lr = lr
+        self.h_0 = None
+        self.c_0 = None
+
         for idx in range(num_layers):
             self.layers.append(nn.Conv1d(in_channels=num_channels if idx == 0 else 32 // (2 ** (idx - 1)) * num_channels, out_channels=32 // (2 ** idx) * num_channels, kernel_size=kernel_size, padding=1))
             self.layers.append(nn.ReLU())
@@ -102,6 +105,14 @@ class HackaConvLSTMNet(HackaConvNet):
         self.layers.append(nn.LSTM(input_size=6552, hidden_size=6552, num_layers=2)) #slide needed
         self.layers.append(nn.LazyLinear(out_features=1))
         self.layers.append(nn.Sigmoid()) 
+
+    def forward(self, x):
+        for layer in self.layers:
+            if isinstance(layer, nn.LSTM):
+                x, (self.h_0, self.c_0) = layer(x)
+            else:
+                x = layer(x)
+        return x#score is converted from a 0-1 scale to a 0-100 scale
 
 
 class HackaConvPretraining(pl.LightningModule):
