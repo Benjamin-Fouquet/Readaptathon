@@ -77,6 +77,17 @@ def get_last_timestp(folder, verbose=True):
 
 
 def interp_clean(y, window_length=31, poly_order=3, threshold=150):
+    """Interpolate data points and remove anomalies above a given threshold.
+
+    Args:
+        y: Data points.
+        window_length: Window length used during interpolation. Defaults to 31.
+        poly_order: Polynomail order used during interpolztion. Defaults to 3.
+        threshold: Threshold above which anomalies are removed. Defaults to 150.
+
+    Returns:
+        A tuple of interpolated data points and data points with anomalies removed.
+    """
     y_interp = interpolate(
         y, window_length=window_length, poly_order=poly_order
     )
@@ -86,6 +97,11 @@ def interp_clean(y, window_length=31, poly_order=3, threshold=150):
 
 
 def smooth_tensor(full_tensor):
+    """Smooth data points by removing anomalies.
+
+    Args:
+        full_tensor: Data points from which anomalies are removed.
+    """
     for i, patient in enumerate(full_tensor):
         for j, keypoint in enumerate(patient):
             k_interp, k_clean = interp_clean(keypoint)
