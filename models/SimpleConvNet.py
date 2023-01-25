@@ -20,14 +20,13 @@ class CNNRegressor(nn.Module):
             last_act="prelu"
         )
         
-        
 
     def forward(self, x):
         return self.cnn(x)
 
     
 
-class StupidConvNet(LightningModule):
+class SimpleConvNet(LightningModule):
     def __init__(self, in_shape, classes=1, channels=6*[32], strides=6*[2], kernel_size=3, num_res_units=6, lr=1e-3):
         super().__init__()
         self.save_hyperparameters()

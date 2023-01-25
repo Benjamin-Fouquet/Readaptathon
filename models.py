@@ -1,8 +1,5 @@
 '''
 Classes for models
-
-TODO:
--1D conv parametrisation
 '''
 import torch
 import torch.nn as nn
@@ -12,9 +9,7 @@ import torch.nn.functional as F
 
 class HackaConv(pl.LightningModule):
     '''
-    Parametrisable class for 1d conv following the following architecture from "check paper from Chloe"
-    TODO / open questions:
-    -How to properly collapse t before fully connected
+    Parametrisable class for 1d conv following the following architecture from "Salami et al.:Using Deep Neural Networks for Human Fall Detection Based on Pose"
     '''
     def __init__(self, num_layers=1, num_channels=21, kernel_size=3, lr=1e-4, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -38,12 +33,12 @@ class HackaConv(pl.LightningModule):
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
-        return x * 100 #from 0-1 to 0-100
+        return x * 100 #score is converted from a 0-1 scale to a 0-100 scale
 
     def training_step(self, batch, batch_idx):
         x, y = batch
         z = self(x)
-        loss = F.mse_loss(z, y)#Binary 
+        loss = F.mse_loss(z, y)
         self.losses.append(loss.detach().cpu().numpy())
 
         self.log("train_loss", loss)
@@ -52,7 +47,7 @@ class HackaConv(pl.LightningModule):
     def validation_step(self, batch, batch_idx, *args, **kwargs):
         x, y = batch
         z = self(x)
-        loss = F.mse_loss(z, y)#Binary 
+        loss = F.mse_loss(z, y)
         self.losses.append(loss.detach().cpu().numpy())
 
         self.log("val_loss", loss)
@@ -77,6 +72,9 @@ class HackaConv(pl.LightningModule):
 
 
 class HackaConvLSTM(HackaConv):
+    '''
+    1d conv network with added LSTM. LSTM size is hardcoded to fit our particular datamodule
+    '''
     def __init__(self, num_layers=5, num_channels=21, kernel_size=3, lr=0.001, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.layers = nn.ModuleList([])
@@ -98,11 +96,9 @@ class HackaConvLSTM(HackaConv):
         self.layers.append(nn.Sigmoid()) 
 
 
-class HackConvPretraining(pl.LightningModule):
+class HackaConvPretraining(pl.LightningModule):
     '''
-    Parametrisable class for 1d conv following the following architecture from "check paper from Chloe"
-    TODO / open questions:
-    -How to properly collapse t before fully connected
+    Pre-trainable architecture on gesture recognition dataset. First layers can be imported into a HackaConv instance and frozen.
     '''
     def __init__(self, num_layers=1, num_channels=21, kernel_size=3, lr=1e-4, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
