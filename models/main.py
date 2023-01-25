@@ -16,9 +16,9 @@ from aaha_datamodules import HackathonDataModule
 parser = argparse.ArgumentParser(description='Dynamic MRI Reconstruction')
 #DATA
 parser.add_argument('-o', '--output_path', help='InOutput path', type=str, required=False, default = home+'/Documents/hackathon/Results/')
-parser.add_argument('-d', '--data_path', help='Data path', type=str, required=False, default='/home/claire/Documents/hackathon/AHA/media/rousseau/Seagate5To/Sync-Data/AHA/derivatives-one-skeleton/')
+parser.add_argument('-d', '--data_path', help='Data path', type=str, required=False, default='data/media/rousseau/Seagate5To/Sync-Data/AHA/derivatives-one-skeleton')
 parser.add_argument('-k', '--keypoints', help='Path to keypoints file', type=list, required=False, default = [1, 2, 3, 4, 5, 6, 7])
-parser.add_argument('-s', '--score_path', help='Path to score file', type=str, required=False, default="/home/claire/Documents/hackathon/AHA/aha_scores.json")
+parser.add_argument('-s', '--score_path', help='Path to score file', type=str, required=False, default="data/aha_scores.json")
 
 #TRAINING
 parser.add_argument('-p', '--prefix', help='Experiment name', type=str, required=False)
